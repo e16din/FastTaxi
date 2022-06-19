@@ -1,0 +1,10 @@
+<resources>
+  <string name="app_name">FastTaxi</string>
+  <string name="login">login</string>
+  <string name="password">password</string>
+  <string name="sign_in">Sign In</string>
+  <string name="order">Order</string>
+  <string name="enter_start_point">Enter start point</string>
+  <string name="enter_finish_point">Enter finish point</string>
+  <string name="where_to_go">Куда едем?</string>
+</resources>
