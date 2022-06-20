@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.core.widget.addTextChangedListener
 import com.e16din.fasttaxi.FastTaxiServer
-import com.e16din.fasttaxi.architecture.subjects.Screen
+import com.e16din.fasttaxi.architecture.Screen
 import com.e16din.fasttaxi.architecture.subjects.ServerAgent
 import com.e16din.fasttaxi.architecture.subjects.SystemAgent
 import com.e16din.fasttaxi.architecture.subjects.UserAgent
@@ -31,29 +31,42 @@ class AuthScreen : Screen {
   private val state = State()
 
   fun main() {
-    systemAgent.events.onCreate = event {
+    systemAgent.events.onCreate = systemAgent.event {
       //todo: call quit onStop() here, reset screenScope onStart()
 
       fun updateSignInButtonState() {
-        val hasLogin = state.login?.isNotBlank() == true
-        val hasPassword = state.password?.isNotBlank() == true
-        // todo: check fields length
-        userAgent.updateSignInButtonState(hasLogin && hasPassword)
+        val conditions = listOf(
+          Condition(
+            "Логин от 4-х до 15-ти сиволов",
+            state.login?.length in 4..15),
+          Condition("Пароль от 6-ти символов",
+            state.password?.length in 6..Int.MAX_VALUE)
+        )
+        checkConditions( // todo: вызывать на каждое действие субъекта
+          conditions,
+          onOk = {
+            userAgent.doUpdateSignInButtonState(true)
+          },
+          onNotOk = {
+            // todo: handle conditions
+            userAgent.doUpdateSignInButtonState(false)
+          }
+        )
       }
 
       updateSignInButtonState()
 
-      userAgent.onLoginChanged = event("onLoginChanged()") { login ->
+      userAgent.onLoginChanged = userAgent.event("Ввод логина") { login ->
         state.login = login
         updateSignInButtonState()
       }
 
-      userAgent.onPasswordChanged = event("onPasswordChanged()") { password ->
+      userAgent.onPasswordChanged = userAgent.event("onPasswordChanged()") { password ->
         state.password = password
         updateSignInButtonState()
       }
 
-      userAgent.onSignInClick = event("onSignInClick()") {
+      userAgent.onSignInClick = userAgent.event("onSignInClick()") {
         serverAgent.signIn(
           login = requireNotNull(state.login),
           password = requireNotNull(state.password),
@@ -119,7 +132,7 @@ class AuthServerAgent(private val screenScope: CoroutineScope) : ServerAgent {
 
 class AuthUserAgent(private val binding: ScreenAuthBinding) : UserAgent {
 
-  fun updateSignInButtonState(enabled: Boolean) = doAction("updateSignInButtonState()", enabled) {
+  fun doUpdateSignInButtonState(enabled: Boolean) = doAction("updateSignInButtonState()", enabled) {
     binding.signInButton.isEnabled = enabled
   }
 

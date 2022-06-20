@@ -1,5 +1,6 @@
 package com.e16din.fasttaxi.implementation
 
+import com.e16din.fasttaxi.architecture.Screen
 import com.e16din.fasttaxi.architecture.Subject
 import com.e16din.redshadow.RedShadow
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -40,9 +41,31 @@ fun Subject.doAction(
   RedShadow.onActionEnd(actionName, isAsync, this.javaClass)
 }
 
-fun Subject.makeScreenScope() = CoroutineScope(Dispatchers.Main + CoroutineExceptionHandler { _, t ->
-  RedShadow.onEvent("[Fail!] ${t.stackTraceToString()}", this.javaClass)
-})
+fun Subject.makeScreenScope() =
+  CoroutineScope(Dispatchers.Main + CoroutineExceptionHandler { _, t ->
+    RedShadow.onError("[Fail!] ${t.stackTraceToString()}", this.javaClass)
+  })
+
+class Condition(val desc: String, val value: Boolean)
+
+// можно делать TDD без автотестов
+inline fun Screen.checkConditions(
+  conditions: List<Condition>,
+  crossinline onOk: () -> Unit,
+  crossinline onNotOk: (falseConditions: List<Condition>) -> Unit,
+) {
+
+  if (conditions.all { it.value }) {
+    RedShadow.onEvent("[Check] Ok", this.javaClass)
+    onOk.invoke()
+  } else {
+    val falseConditions = conditions.filter { !it.value }
+    falseConditions.forEach {
+      RedShadow.onEvent("[Check] Not Ok | ${it.desc}", this.javaClass)
+    }
+    onNotOk.invoke(falseConditions)
+  }
+}
 
 class DisposablePackage<T> {
   var value: T? = null

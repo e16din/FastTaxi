@@ -2,7 +2,7 @@ package com.e16din.fasttaxi.implementation
 
 import android.app.Application
 import com.e16din.fasttaxi.architecture.App
-import com.e16din.fasttaxi.architecture.subjects.Screen
+import com.e16din.fasttaxi.architecture.Screen
 import com.e16din.fasttaxi.implementation.fruits.OrderFruit
 import com.e16din.fasttaxi.implementation.fruits.ProfileFruit
 import com.e16din.redshadow.BuildConfig

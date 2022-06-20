@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.core.view.isVisible
 import com.e16din.fasttaxi.R
-import com.e16din.fasttaxi.architecture.subjects.Screen
+import com.e16din.fasttaxi.architecture.Screen
 import com.e16din.fasttaxi.architecture.subjects.ServerAgent
 import com.e16din.fasttaxi.architecture.subjects.SystemAgent
 import com.e16din.fasttaxi.databinding.ScreenMainBinding
@@ -22,7 +22,7 @@ class MainScreen : Screen {
   lateinit var userAgent: MainUserAgent
 
   fun main() {
-    systemAgent.events.onCreate = event("onCreate()") {
+    systemAgent.events.onCreate = systemAgent.event("onCreate()") {
       if (!FastTaxiApp.profileFruit.isAuthorized()) {
         systemAgent.showAuthScreen()
         return@event
@@ -33,16 +33,16 @@ class MainScreen : Screen {
         finishPoint = FastTaxiApp.orderFruit.finishPoint
       )
     }
-    userAgent.onSelectStartPointClick = event("onSelectStartPointClick()") {
+    userAgent.onSelectStartPointClick = userAgent.event("onSelectStartPointClick()") {
       systemAgent.showSelectPointsScreen()
     }
-    userAgent.onSelectFinishPointClick = event("onSelectFinishPointClick()") {
+    userAgent.onSelectFinishPointClick = userAgent.event("onSelectFinishPointClick()") {
       systemAgent.showSelectPointsScreen()
     }
-    userAgent.onOrderClick = event("onOrderClick()") {
+    userAgent.onOrderClick = userAgent.event("onOrderClick()") {
     }
 
-    systemAgent.events.onBackPressed = event("onBackPressed()") {
+    systemAgent.events.onBackPressed = systemAgent.event("onBackPressed()") {
       systemAgent.finish()
     }
   }
