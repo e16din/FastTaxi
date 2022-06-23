@@ -1,10 +1,10 @@
-package com.e16din.fasttaxi.implementation.utils
+package com.e16din.fasttaxi.implementation.utils.base
 
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import androidx.fragment.app.Fragment
 
-abstract class BottomSheetFragmentSystemAgent() : BottomSheetDialogFragment() {
+abstract class FragmentSystemAgent() : Fragment() {
 
   val events = SystemAgentEvents()
 

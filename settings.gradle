@@ -14,4 +14,3 @@ dependencyResolutionManagement {
 }
 rootProject.name = "fasttaxi"
 include ':app'
-include ':redshadow'

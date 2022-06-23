@@ -3,17 +3,15 @@ package com.e16din.fasttaxi.implementation.screens
 import android.content.Intent
 import android.os.Bundle
 import androidx.core.view.isVisible
-import com.e16din.fasttaxi.R
 import com.e16din.fasttaxi.architecture.Screen
 import com.e16din.fasttaxi.architecture.subjects.ServerAgent
 import com.e16din.fasttaxi.architecture.subjects.SystemAgent
 import com.e16din.fasttaxi.databinding.ScreenMainBinding
 import com.e16din.fasttaxi.implementation.*
-import com.e16din.fasttaxi.implementation.data.AddressPointData
-import com.e16din.fasttaxi.implementation.utils.ActivitySystemAgent
-import com.github.terrakok.cicerone.androidx.AppNavigator
+import com.e16din.fasttaxi.implementation.fruits.OrderFruit
+import com.e16din.fasttaxi.implementation.utils.base.ActivitySystemAgent
+import com.e16din.fasttaxi.implementation.utils.handlytester.HandlyTester
 import com.yandex.mapkit.MapKitFactory
-import kotlinx.coroutines.CoroutineScope
 
 class MainScreen : Screen {
 
@@ -21,18 +19,39 @@ class MainScreen : Screen {
   lateinit var serverAgent: MainServerAgent
   lateinit var userAgent: MainUserAgent
 
+  val orderFruit = OrderFruit()
+
   fun main() {
     systemAgent.events.onCreate = systemAgent.event("onCreate()") {
       if (!FastTaxiApp.profileFruit.isAuthorized()) {
-        systemAgent.showAuthScreen()
+        systemAgent.doShowAuthScreen()
         return@event
       }
 
-      userAgent.updateOrderDetails(
-        startPoint = FastTaxiApp.orderFruit.startPoint,
-        finishPoint = FastTaxiApp.orderFruit.finishPoint
+      val hasStartPointCond = Condition(
+        "Выбрана точка старта",
+        orderFruit.startPoint?.address != null
       )
+      val hasFinishPointCond = Condition(
+        "Выбрана точка финиша",
+        orderFruit.finishPoint?.address != null
+      )
+
+      val isDefaultModeEnabled = checkConditions(listOf(hasStartPointCond), {}, {})
+      userAgent.doUpdateOrderDetails(
+        isDefaultModeEnabled = isDefaultModeEnabled,
+        startPointText = orderFruit.startPoint?.address,
+        finishPointText = orderFruit.finishPoint?.address
+      )
+
+      val isOrderButtonEnabled = checkConditions(
+        listOf(
+          hasStartPointCond,
+          hasFinishPointCond
+        ), {}, {})
+      userAgent.doUpdateOrderButton(isOrderButtonEnabled)
     }
+
     userAgent.onSelectStartPointClick = userAgent.event("onSelectStartPointClick()") {
       systemAgent.showSelectPointsScreen()
     }
@@ -48,9 +67,7 @@ class MainScreen : Screen {
   }
 }
 
-class MainSystemAgent() : ActivitySystemAgent(), SystemAgent {
-
-  private val screenScope = makeScreenScope()
+class MainSystemAgent : ActivitySystemAgent(), SystemAgent {
 
   private lateinit var binding: ScreenMainBinding
 
@@ -62,26 +79,18 @@ class MainSystemAgent() : ActivitySystemAgent(), SystemAgent {
     val screen = FastTaxiApp.getScreen(MainScreen::class)
       ?: MainScreen()
     screen.apply {
-      serverAgent = MainServerAgent(screenScope)
+      serverAgent = MainServerAgent()
       systemAgent = this@MainSystemAgent
       userAgent = MainUserAgent(binding)
     }
     FastTaxiApp.addScreen(screen)
 
-    screen.main()
-    events.onCreate?.invoke()
-  }
-
-  private val navigator = AppNavigator(this, R.id.container)
-
-  override fun onResume() {
-    super.onResume()
-    FastTaxiApp.navigatorHolder.setNavigator(navigator)
-  }
-
-  override fun onPause() {
-    FastTaxiApp.navigatorHolder.removeNavigator()
-    super.onPause()
+    if (HandlyTester.isScenaryModeEnabled) {
+      HandlyTester.testMainScreen(screen)
+    } else {
+      screen.main()
+      events.onCreate?.invoke()
+    }
   }
 
   override fun onStop() {
@@ -97,8 +106,11 @@ class MainSystemAgent() : ActivitySystemAgent(), SystemAgent {
   }
 
   /// ACTIONS
+  enum class ActionTypes(val text: String) {
+    ShowAuthScreen("Открыть экран авторизации")
+  }
 
-  fun showAuthScreen() = doAction() {
+  fun doShowAuthScreen() = doAction(ActionTypes.ShowAuthScreen.text) {
     val intent = Intent(this, AuthSystemAgent::class.java)
     startActivity(intent)
   }
@@ -110,20 +122,20 @@ class MainSystemAgent() : ActivitySystemAgent(), SystemAgent {
 
 class MainUserAgent(val binding: ScreenMainBinding) : ServerAgent {
 
-  fun updateOrderDetails(
-    startPoint: AddressPointData?,
-    finishPoint: AddressPointData?,
+  fun doUpdateOrderDetails(
+    isDefaultModeEnabled: Boolean,
+    startPointText: String?,
+    finishPointText: String?,
   ) = doAction("updateOrderDetails()") {
-    val hasStartPoint = startPoint != null
-    val hasFinishPoint = finishPoint != null
-    val isAnyPointFilled = hasStartPoint || hasFinishPoint
-    binding.defaultStartButton.isVisible = !isAnyPointFilled
-    binding.filledPointsContainer.isVisible = isAnyPointFilled
+    binding.defaultStartButton.isVisible = isDefaultModeEnabled
+    binding.filledPointsContainer.isVisible = !isDefaultModeEnabled
 
-    binding.startButton.text = startPoint?.address
-    binding.finishButton.text = finishPoint?.address
+    binding.startButton.text = startPointText
+    binding.finishButton.text = finishPointText
+  }
 
-    binding.orderButton.isVisible = hasStartPoint && hasFinishPoint
+  fun doUpdateOrderButton(enabled: Boolean) = doAction("doUpdateOrderButton()") {
+    binding.orderButton.isVisible = enabled
   }
 
   var onSelectStartPointClick: JustEvent? = null
@@ -146,6 +158,6 @@ class MainUserAgent(val binding: ScreenMainBinding) : ServerAgent {
   }
 }
 
-class MainServerAgent(val screenScope: CoroutineScope) : ServerAgent {
-    //
+class MainServerAgent : ServerAgent {
+  //
 }

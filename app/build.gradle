@@ -36,11 +36,10 @@ android {
 }
 
 dependencies {
-  implementation 'androidx.core:core-ktx:1.7.0'
+  implementation 'androidx.core:core-ktx:1.8.0'
   implementation 'androidx.appcompat:appcompat:1.4.2'
   implementation 'com.google.android.material:material:1.6.1'
   implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-  implementation project(path: ':redshadow')
   testImplementation 'junit:junit:4.13.2'
   androidTestImplementation 'androidx.test.ext:junit:1.1.3'
   androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
@@ -50,5 +49,4 @@ dependencies {
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion")
 
   implementation 'com.yandex.android:maps.mobile:4.0.0-full'
-  implementation("com.github.terrakok:cicerone:7.1")
 }

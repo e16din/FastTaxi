@@ -1,4 +1,4 @@
-package com.e16din.fasttaxi.implementation.utils
+package com.e16din.fasttaxi.implementation.utils.base
 
 import com.e16din.fasttaxi.implementation.JustEvent
 

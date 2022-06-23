@@ -1,13 +1,12 @@
 package com.e16din.fasttaxi.implementation
 
 import android.app.Application
+import com.e16din.fasttaxi.BuildConfig
 import com.e16din.fasttaxi.architecture.App
 import com.e16din.fasttaxi.architecture.Screen
-import com.e16din.fasttaxi.implementation.fruits.OrderFruit
 import com.e16din.fasttaxi.implementation.fruits.ProfileFruit
-import com.e16din.redshadow.BuildConfig
-import com.e16din.redshadow.RedShadow
-import com.github.terrakok.cicerone.Cicerone
+import com.e16din.fasttaxi.implementation.utils.handlytester.HandlyTester
+import com.e16din.fasttaxi.implementation.utils.redshadow.RedShadow
 import com.yandex.mapkit.MapKitFactory
 import kotlin.reflect.KClass
 
@@ -16,7 +15,11 @@ class FastTaxiApp : Application(), App {
   override fun onCreate() {
     super.onCreate()
 
+    HandlyTester.isScenaryModeEnabled = false
+    HandlyTester.runSmokeTests()
+
     if (BuildConfig.DEBUG) {
+      RedShadow.init()
       val shadowActions = listOf(
         RedShadow.makePrintLogShadowAction()
       )
@@ -28,11 +31,6 @@ class FastTaxiApp : Application(), App {
   }
 
   companion object {
-    // todo: remove cicerone
-    private val cicerone = Cicerone.create()
-    val router get() = cicerone.router
-    val navigatorHolder get() = cicerone.getNavigatorHolder()
-
     // NOTE: to save Screen objects on configuration changes (rotation and etc.)
     private val activeScreensMap = mutableMapOf<String, Screen>()
 
@@ -43,16 +41,15 @@ class FastTaxiApp : Application(), App {
     fun addScreen(screen: Screen) {
       val key = screen.javaClass.simpleName
       activeScreensMap[key] = screen
-      RedShadow.onEvent("addScreen: $key", FastTaxiApp::class.java)
+      RedShadow.onEvent("addScreen: $key", null, FastTaxiApp::class.java)
     }
 
     fun removeScreen(screenClass: KClass<*>) {
       val key = screenClass.simpleName
       activeScreensMap.remove(key)
-      RedShadow.onEvent("removeScreen: $key", FastTaxiApp::class.java)
+      RedShadow.onEvent("removeScreen: $key", null, FastTaxiApp::class.java)
     }
 
-    val orderFruit = OrderFruit()
     val profileFruit = ProfileFruit()
   }
 }
