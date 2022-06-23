@@ -10,6 +10,7 @@ import com.e16din.fasttaxi.databinding.ScreenMainBinding
 import com.e16din.fasttaxi.implementation.*
 import com.e16din.fasttaxi.implementation.fruits.OrderFruit
 import com.e16din.fasttaxi.implementation.utils.base.ActivitySystemAgent
+import com.e16din.fasttaxi.implementation.utils.base.ScreenState
 import com.e16din.fasttaxi.implementation.utils.handlytester.HandlyTester
 import com.yandex.mapkit.MapKitFactory
 
@@ -20,6 +21,9 @@ class MainScreen : Screen {
   lateinit var userAgent: MainUserAgent
 
   val orderFruit = OrderFruit()
+
+  class State : ScreenState()
+  val state = State()
 
   fun main() {
     systemAgent.events.onCreate = systemAgent.event("onCreate()") {
@@ -52,16 +56,20 @@ class MainScreen : Screen {
       userAgent.doUpdateOrderButton(isOrderButtonEnabled)
     }
 
-    userAgent.onSelectStartPointClick = userAgent.event("onSelectStartPointClick()") {
-      systemAgent.showSelectPointsScreen()
-    }
-    userAgent.onSelectFinishPointClick = userAgent.event("onSelectFinishPointClick()") {
-      systemAgent.showSelectPointsScreen()
-    }
-    userAgent.onOrderClick = userAgent.event("onOrderClick()") {
+    systemAgent.events.onStart = systemAgent.event("onStart") {
+      state.isTopmost = true
     }
 
-    systemAgent.events.onBackPressed = systemAgent.event("onBackPressed()") {
+    userAgent.onSelectStartPointClick = userAgent.event("onSelectStartPointClick") {
+      systemAgent.showSelectPointsScreen()
+    }
+    userAgent.onSelectFinishPointClick = userAgent.event("onSelectFinishPointClick") {
+      systemAgent.showSelectPointsScreen()
+    }
+    userAgent.onOrderClick = userAgent.event("onOrderClick") {
+    }
+
+    systemAgent.events.onBackPressed = systemAgent.event("onBackPressed") {
       systemAgent.finish()
     }
   }
@@ -76,7 +84,7 @@ class MainSystemAgent : ActivitySystemAgent(), SystemAgent {
     binding = ScreenMainBinding.inflate(layoutInflater)
     setContentView(binding.root)
 
-    val screen = FastTaxiApp.getScreen(MainScreen::class)
+    val screen = FastTaxiApp.getScreen()
       ?: MainScreen()
     screen.apply {
       serverAgent = MainServerAgent()

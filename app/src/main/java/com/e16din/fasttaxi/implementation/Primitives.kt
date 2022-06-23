@@ -71,3 +71,17 @@ inline fun Screen.checkConditions(
   }
 }
 
+class Scenario(val script: () -> Unit, val body: () -> Unit) {
+  fun pasteBody() {
+    body.invoke()
+  }
+
+  fun startScript() {
+    script.invoke()
+  }
+}
+
+fun scenario(script: () -> Unit, body: () -> Unit): Scenario {
+  return Scenario(script, body)
+}
+

@@ -32,10 +32,10 @@ class FastTaxiApp : Application(), App {
 
   companion object {
     // NOTE: to save Screen objects on configuration changes (rotation and etc.)
-    private val activeScreensMap = mutableMapOf<String, Screen>()
+    val activeScreensMap = mutableMapOf<String, Screen>()
 
-    fun <T : Screen?> getScreen(key: KClass<*>): T {
-      return activeScreensMap[key.simpleName] as T
+    inline fun <reified T : Screen?> getScreen(): T? {
+      return activeScreensMap[T::class.java.simpleName] as T
     }
 
     fun addScreen(screen: Screen) {

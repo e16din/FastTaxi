@@ -2,7 +2,6 @@ package com.e16din.fasttaxi.implementation.screens
 
 import android.os.Bundle
 import android.os.Handler
-import android.os.Looper
 import android.widget.Toast
 import androidx.core.widget.addTextChangedListener
 import com.e16din.fasttaxi.FastTaxiServer
@@ -14,6 +13,7 @@ import com.e16din.fasttaxi.databinding.ScreenAuthBinding
 import com.e16din.fasttaxi.implementation.*
 import com.e16din.fasttaxi.implementation.data.AuthData
 import com.e16din.fasttaxi.implementation.utils.base.ActivitySystemAgent
+import com.e16din.fasttaxi.implementation.utils.base.ScreenState
 import com.e16din.fasttaxi.implementation.utils.handlytester.HandlyTester
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,13 +28,13 @@ class AuthScreen : Screen {
   class State(
     var login: String? = null,
     var password: String? = null,
-  )
+  ) : ScreenState()
 
   val state = State()
 
   fun main() {
-    fun updateSignInButtonState() {
-      val isEnterButtonEnabled = checkConditions(listOf(
+    fun checkLoginPassword(): Boolean {
+      return checkConditions(listOf(
         Condition(
           "Логин от 4-х до 15-ти сиволов",
           state.login?.length in 4..15
@@ -44,11 +44,11 @@ class AuthScreen : Screen {
           state.password?.length in 6..Int.MAX_VALUE
         )
       ), {}, {})
-      userAgent.doUpdateSignInButtonState(isEnterButtonEnabled)
     }
 
     systemAgent.events.onCreate = systemAgent.event {
-      updateSignInButtonState()
+      val isEnterButtonEnabled = checkLoginPassword()
+      userAgent.doUpdateSignInButtonState(isEnterButtonEnabled)
     }
 
     systemAgent.events.onStop = systemAgent.event {
@@ -59,28 +59,72 @@ class AuthScreen : Screen {
       userAgent.doStartUiUpdates()
     }
 
-    userAgent.onLoginChanged = userAgent.event("onLoginChanged") { login ->
-      state.login = login
-      updateSignInButtonState()
-    }
+    scenario(
+      script = {
+        // Given
+        val login = "MyLogin"
+        val password = "12345678jjiO"
 
-    userAgent.onPasswordChanged = userAgent.event("onPasswordChanged") { password ->
-      state.password = password
-      updateSignInButtonState()
-    }
+        // When
+        userAgent.onLoginChanged?.invoke(login)
+        userAgent.onPasswordChanged?.invoke(password)
 
-    userAgent.onSignInClick = userAgent.event("onSignInClick") {
-      serverAgent.signIn(
-        login = requireNotNull(state.login),
-        password = requireNotNull(state.password),
-        onResult = { result ->
-          if (result.success) {
-            systemAgent.hideScreen()
-          } else {
-            userAgent.showFailMessage()
-          }
-        })
-    }
+        // Then
+        check(userAgent.binding.signInButton.isEnabled)
+      },
+      body = {
+        userAgent.onLoginChanged = userAgent.event("onLoginChanged") { login ->
+          state.login = login
+          val isEnterButtonEnabled = checkLoginPassword()
+          userAgent.doUpdateSignInButtonState(isEnterButtonEnabled)
+        }
+
+        userAgent.onPasswordChanged = userAgent.event("onPasswordChanged") { password ->
+          state.password = password
+          val isEnterButtonEnabled = checkLoginPassword()
+          userAgent.doUpdateSignInButtonState(isEnterButtonEnabled)
+        }
+      }).pasteBody()
+    // todo: call startScript to test scenario
+
+    scenario(
+      script = {
+        // todo: run it in the scope
+        // Given
+        val isEnabled = true
+
+        // When
+        userAgent.onSignInClick?.invoke()
+
+        // Then
+
+        var stopped = false
+        systemAgent.events.onStop = {
+          stopped = true
+        }
+        while(!stopped) {
+          // delay(1000)
+          // todo: break on long check
+        }
+        check(stopped)
+
+      },
+      body = {
+        userAgent.onSignInClick = userAgent.event("onSignInClick") {
+          serverAgent.signIn(
+            login = requireNotNull(state.login),
+            password = requireNotNull(state.password),
+            onResult = { result ->
+              if (result.success) {
+                state.isTopmost = false // todo: remove it
+                systemAgent.hideScreen()
+              } else {
+                userAgent.showFailMessage()
+              }
+            })
+        }
+      }
+    ).pasteBody()
   }
 }
 
@@ -91,7 +135,7 @@ class AuthSystemAgent : ActivitySystemAgent(), SystemAgent {
     val binding = ScreenAuthBinding.inflate(layoutInflater)
     setContentView(binding.root)
 
-    val screen = FastTaxiApp.getScreen(AuthScreen::class)
+    val screen = FastTaxiApp.getScreen()
       ?: AuthScreen()
     screen.apply {
       serverAgent = AuthServerAgent()
@@ -136,15 +180,15 @@ class AuthServerAgent : ServerAgent {
   }
 }
 
-class AuthUserAgent(private val binding: ScreenAuthBinding) : UserAgent {
+class AuthUserAgent(val binding: ScreenAuthBinding) : UserAgent {
   private lateinit var handler: Handler
 
   fun doStopUiUpdates() = doAction("Прекратить действия с UI") {
-    handler.looper.quit()
+    handler.removeCallbacksAndMessages(null)
   }
 
   fun doStartUiUpdates() = doAction("Возобновить действия с UI") {
-    handler = Handler(Looper.getMainLooper())
+    handler = Handler()
   }
 
   fun doUpdateSignInButtonState(enabled: Boolean) = doAction("updateSignInButtonState()", enabled) {
