@@ -13,7 +13,6 @@ import com.e16din.fasttaxi.architecture.subjects.UserAgent
 import com.e16din.fasttaxi.databinding.ScreenAuthBinding
 import com.e16din.fasttaxi.implementation.*
 import com.e16din.fasttaxi.implementation.utils.base.ActivitySystemAgent
-import com.e16din.fasttaxi.implementation.utils.handlytester.HandlyTester
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -23,8 +22,6 @@ class AuthScreen : Screen {
   lateinit var systemAgent: AuthSystemAgent
   lateinit var serverAgent: AuthServerAgent
   lateinit var userAgent: AuthUserAgent
-
-  val scenarios = mutableListOf<Scenario>()
 
   class State(
     var login: String? = null,
@@ -88,107 +85,35 @@ class AuthScreen : Screen {
       )
     }
 
-    scenario(
-      scenariosHolder = scenarios,
-      desc = "Ввод логина/пароля для активации/деактивации кнопки ВОЙТИ",
-      scripts = listOf {
-        // 1: Пользователь ввел пустой пароль
-        userAgent.onLoginChanged?.invoke("MyLogin")
-        userAgent.onPasswordChanged?.invoke("")
+    userAgent.onLoginChanged = userAgent.onEvent("Пользователь ввел логин") { login ->
+      state.login = login
+      val isEnterButtonEnabled = checkLoginPasswordValues()
+      userAgent.doUpdateSignInButtonState("Приложение сделало кнопку доступной/недоступной",
+        isEnterButtonEnabled)
+    }
 
-        // 2: Приложение сделало недоступной кнопку авторизации
-        check(!userAgent.binding.signInButton.isEnabled)
+    userAgent.onPasswordChanged = userAgent.onEvent("Пользователь ввел логин") { password ->
+      state.password = password
+      val isEnterButtonEnabled = checkLoginPasswordValues()
+      userAgent.doUpdateSignInButtonState("Приложение сделало кнопку доступной/недоступной",
+        isEnterButtonEnabled)
+    }
 
-        // 3: Пользователь ввел пустой логин
-        userAgent.onLoginChanged?.invoke("")
-        userAgent.onPasswordChanged?.invoke("12345678jjiO")
+    userAgent.onSignInClick = userAgent.onEvent(desc = "Пользователь нажал кнопку ВОЙТИ") {
+      serverAgent.doSignIn(
+        desc = "Приложение запрашивает авторизацию на сервере",
+        login = requireNotNull(state.login),
+        password = requireNotNull(state.password)
+      )
+    }
 
-        // 4: Приложение сделало недоступной кнопку авторизации
-        check(!userAgent.binding.signInButton.isEnabled)
-
-        // 5: Пользователь ввел логин и пароль
-        userAgent.onLoginChanged?.invoke("MyLogin")
-        userAgent.onPasswordChanged?.invoke("12345678jjiO")
-
-        // 6: Приложение сделало доступной кнопку авторизации
-        check(userAgent.binding.signInButton.isEnabled)
-      },
-      body = {
-        // todo: убрать Scenario, так-как он дублирует то что уже есть в структуре приложения
-        // todo: подумать как автоматизировать тестирование, и на сколько это нужно
-
-        userAgent.onLoginChanged = userAgent.onEvent("Пользователь ввел логин") { login ->
-          state.login = login
-          val isEnterButtonEnabled = checkLoginPasswordValues()
-          userAgent.doUpdateSignInButtonState("Приложение сделало кнопку доступной/недоступной",
-            isEnterButtonEnabled)
-        }
-
-        userAgent.onPasswordChanged = userAgent.onEvent("Пользователь ввел логин") { password ->
-          state.password = password
-          val isEnterButtonEnabled = checkLoginPasswordValues()
-          userAgent.doUpdateSignInButtonState("Приложение сделало кнопку доступной/недоступной",
-            isEnterButtonEnabled)
-        }
-      }).pasteBody()
-    // todo: call startScript to test scenario
-
-    scenario(
-      scenariosHolder = scenarios,
-      desc = "Клик по кнопке ВОЙТИ для запроса авторизации " +
-          "И обработка успешной/провальной авторизации на сервере",
-      scripts = listOf(
-        {
-          // 1: Пользователь нажал кнопку "Войти"
-          userAgent.onSignInClick?.invoke()
-
-          // 2: Приложение отправило запрос авторизации на сервер
-          check(actionsHistory.last().id == AuthServerAgent.ACTION_SIGN_IN)
-
-          // 3: Сервер прислал ответ - авторизация успешна
-          serverAgent.onAuthSuccess.invoke()
-
-          // 4: ОС закрыла экран авторизации
-          check(actionsHistory.last().id == AuthSystemAgent.ACTION_HIDE_SCREEN)
-        },
-        {
-          // 1: Пользователь нажал кнопку "Войти"
-          userAgent.onSignInClick?.invoke()
-
-          // 2: Приложение отправило запрос авторизации на сервер
-          check(actionsHistory.last().id == AuthServerAgent.ACTION_SIGN_IN)
-
-          // 3: Сервер прислал ответ - отказ в авторизации
-          serverAgent.onAuthSuccess.invoke()
-
-          // 4: Приложение показало ошибку авторизации пользователю
-          check(actionsHistory.last().id == AuthUserAgent.ACTION_SHOW_SIGN_IN_FAILED_MESSAGE)
-        }
-      ),
-      body = {
-        userAgent.onSignInClick = userAgent.onEvent(desc = "Пользователь нажал кнопку ВОЙТИ") {
-          serverAgent.doSignIn(
-            desc = "Приложение запрашивает авторизацию на сервере",
-            login = requireNotNull(state.login),
-            password = requireNotNull(state.password)
-          )
-        }
-
-        serverAgent.onAuthSuccess =
-          serverAgent.onEvent("Сервер прислал ответ - авторизация успешна") {
-            systemAgent.doHideScreen("ОС закрыла экран авторизации")
-          }
-
-        serverAgent.onAuthFail = serverAgent.onEvent("Сервер прислал ответ - отказ в авторизации") {
-          userAgent.doShowFailMessage("Приложение показало ошибку авторизации пользователю")
-        }
+    serverAgent.onAuthSuccess =
+      serverAgent.onEvent("Сервер прислал ответ - авторизация успешна") {
+        systemAgent.doHideScreen("ОС закрыла экран авторизации")
       }
-    ).pasteBody()
-  }
 
-  fun checkAllScenarios() {
-    scenarios.forEach { scenario ->
-      scenario.startScripts()
+    serverAgent.onAuthFail = serverAgent.onEvent("Сервер прислал ответ - отказ в авторизации") {
+      userAgent.doShowFailMessage("Приложение показало ошибку авторизации пользователю")
     }
   }
 }
@@ -199,15 +124,6 @@ class AuthSystemAgent : ActivitySystemAgent(), SystemAgent {
     super.onCreate(savedInstanceState)
     val binding = ScreenAuthBinding.inflate(layoutInflater)
     setContentView(binding.root)
-
-    if (HandlyTester.isTestModeEnabled) {
-      val testAuthScreen = AuthScreen().apply {
-        serverAgent = AuthServerAgent()
-        systemAgent = AuthSystemAgent()
-        userAgent = AuthUserAgent(binding)
-      }
-      testAuthScreen.checkAllScenarios()
-    }
 
     val screen = FastTaxiApp.getScreen()
       ?: AuthScreen()
@@ -253,7 +169,7 @@ class AuthServerAgent : ServerAgent {
 }
 
 class AuthUserAgent(
-  private val binding: ScreenAuthBinding
+  private val binding: ScreenAuthBinding,
 ) : UserAgent {
 
   private val handler = Handler(Looper.getMainLooper())

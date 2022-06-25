@@ -5,7 +5,6 @@ import com.e16din.fasttaxi.BuildConfig
 import com.e16din.fasttaxi.architecture.App
 import com.e16din.fasttaxi.architecture.Screen
 import com.e16din.fasttaxi.implementation.fruits.ProfileFruit
-import com.e16din.fasttaxi.implementation.utils.handlytester.HandlyTester
 import com.e16din.fasttaxi.implementation.utils.redshadow.RedShadow
 import com.yandex.mapkit.MapKitFactory
 import kotlin.reflect.KClass
@@ -14,9 +13,6 @@ class FastTaxiApp : Application(), App {
 
   override fun onCreate() {
     super.onCreate()
-
-    HandlyTester.isTestModeEnabled = false
-    HandlyTester.runSmokeTests()
 
     if (BuildConfig.DEBUG) {
       RedShadow.init()

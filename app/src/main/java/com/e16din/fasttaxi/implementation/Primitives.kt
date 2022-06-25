@@ -43,7 +43,7 @@ fun Subject.doAction(
   RedShadow.onActionEnd(desc, data, this.javaClass)
 }
 
-fun Handler.doLast(delay: Long = 550L, call: () -> Unit) {
+fun Handler.doLast(delay: Long = 350L, call: () -> Unit) {
   this.removeCallbacksAndMessages(null)
   this.postDelayed({
     call.invoke()
@@ -67,25 +67,49 @@ class Condition<T : Any?>(
 val checkOkActionName = "[Check] Ok"
 val checkNotOkActionName = "[Check] Not Ok"
 
-inline fun <T> Screen.checkConditions(
+inline fun <T> Screen.checkConditionsNot(
   conditions: List<Condition<T>>,
   crossinline onOk: () -> Unit,
   crossinline onNotOk: (falseConditions: List<Condition<T>>) -> Unit,
 ): Boolean {
-  // Test
+  return checkConditions(conditions, onOk, onNotOk, invert = true)
+}
 
+inline fun <T> Screen.checkConditions(
+  conditions: List<Condition<T>>,
+  crossinline onOk: () -> Unit,
+  crossinline onNotOk: (falseConditions: List<Condition<T>>) -> Unit,
+  invert: Boolean = false,
+): Boolean {
+  // Тестировать falseValues и trueValues,
+  // если в логике условий ошибка, пусть она вскроется сразу и бросит исключение
   conditions.forEach { condition ->
     condition.falseValues.forEach { falseValue ->
-      check(!condition.checkFunction.invoke(falseValue))
+      val result = !condition.checkFunction.invoke(falseValue)
+      if(!result) {
+        RedShadow.onError("[Test False Value] Not Ok", condition.desc, this.javaClass)
+        RedShadow.onError("[Test False Value] Not Ok", falseValue, this.javaClass)
+      }
+      check(result)
     }
 
     condition.trueValues.forEach { trueValue ->
-      check(condition.checkFunction.invoke(trueValue))
+      val result = condition.checkFunction.invoke(trueValue)
+      if(!result) {
+        RedShadow.onError("[Test True Value] Not Ok", condition.desc, this.javaClass)
+        RedShadow.onError("[Test True Value] Not Ok", trueValue, this.javaClass)
+      }
+      check(result)
     }
   }
 
-  // Real
-  val successConditions = conditions.filter { it.checkFunction.invoke(it.value) }
+  // Проверяем условия, выдаем результат
+  val successConditions = conditions.filter {
+    if (invert)
+      !it.checkFunction.invoke(it.value)
+    else
+      it.checkFunction.invoke(it.value)
+  }
   val failConditions = conditions - successConditions.toSet()
 
   if (failConditions.isEmpty()) {
@@ -100,33 +124,6 @@ inline fun <T> Screen.checkConditions(
     onNotOk.invoke(failConditions)
     return false
   }
-}
-
-class Scenario(
-  val desc: String,
-  val scripts: List<() -> Unit>,
-  val body: () -> Unit,
-) {
-  fun pasteBody() {
-    body.invoke()
-  }
-
-  fun startScripts() {
-    scripts.forEach {
-      it.invoke()
-    }
-  }
-}
-
-fun scenario(
-  scenariosHolder: MutableList<Scenario>,
-  desc: String,
-  scripts: List<() -> Unit>,
-  body: () -> Unit,
-): Scenario {
-  val scenario = Scenario(desc, scripts, body)
-  scenariosHolder.add(scenario)
-  return scenario
 }
 
 private val uniqueStepsCount = AtomicInteger()

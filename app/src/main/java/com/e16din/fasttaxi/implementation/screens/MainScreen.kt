@@ -10,7 +10,6 @@ import com.e16din.fasttaxi.databinding.ScreenMainBinding
 import com.e16din.fasttaxi.implementation.*
 import com.e16din.fasttaxi.implementation.fruits.OrderFruit
 import com.e16din.fasttaxi.implementation.utils.base.ActivitySystemAgent
-import com.e16din.fasttaxi.implementation.utils.handlytester.HandlyTester
 import com.yandex.mapkit.MapKitFactory
 
 class MainScreen : Screen {
@@ -28,42 +27,49 @@ class MainScreen : Screen {
         return@onEvent
       }
 
-      val hasStartPointCond = Condition(
-        desc = "Выбрана точка старта",
-        value = orderFruit.startPoint?.address,
-        checkFunction = { !it.isNullOrBlank() }
-      )
-      val hasFinishPointCond = Condition(
-        desc = "Выбрана точка финиша",
-        value = orderFruit.finishPoint?.address,
-        checkFunction = { !it.isNullOrBlank() }
+      val falseValues = listOf(
+        null,
+        "",
+        "    "
       )
 
-      val isDefaultModeEnabled = checkConditions(listOf(hasStartPointCond), {}, {})
+      val hasPointsConditions = listOf(
+        Condition(
+          desc = "Выбрана точка старта",
+          falseValues = falseValues,
+          value = orderFruit.startPoint?.address,
+          checkFunction = { !it.isNullOrBlank() }
+        ),
+        Condition(
+          desc = "Выбрана точка финиша",
+          falseValues = falseValues,
+          value = orderFruit.finishPoint?.address,
+          checkFunction = { !it.isNullOrBlank() }
+        )
+      )
+      val hasNoAnyPoints = checkConditionsNot(hasPointsConditions, {}, {})
       userAgent.doUpdateOrderDetails(
         desc = "Показываем пользователю детали заказа (в начальном/развернутом формате)",
-        isDefaultModeEnabled = isDefaultModeEnabled,
+        isDefaultModeEnabled = hasNoAnyPoints,
         startPointText = orderFruit.startPoint?.address,
         finishPointText = orderFruit.finishPoint?.address
       )
 
-      val isOrderButtonEnabled = checkConditions(
-        listOf(
-          hasStartPointCond,
-          hasFinishPointCond
-        ), {}, {})
+      val hasBothPoints = checkConditions(hasPointsConditions, {}, {})
       userAgent.doUpdateOrderButton(
         desc = "Показываем пользователю кнопку ЗАКАЗАТЬ (активную/неактивную)",
-        enabled = isOrderButtonEnabled
+        enabled = hasBothPoints
       )
     }
 
-    userAgent.onSelectStartPointClick = userAgent.onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ СТАРТА") {
-      systemAgent.doShowSelectPointsScreen("ОС открыла экран выбора адресов")
-    }
-    userAgent.onSelectFinishPointClick = userAgent.onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ ФИНИША") {
-      systemAgent.doShowSelectPointsScreen("ОС открыла экран выбора адресов")
-    }
+    userAgent.onSelectStartPointClick =
+      userAgent.onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ СТАРТА") {
+        systemAgent.doShowSelectPointsScreen("ОС открыла экран выбора адресов")
+      }
+    userAgent.onSelectFinishPointClick =
+      userAgent.onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ ФИНИША") {
+        systemAgent.doShowSelectPointsScreen("ОС открыла экран выбора адресов")
+      }
     userAgent.onOrderClick = userAgent.onEvent("Пользователь нажал ЗАКАЗАТЬ") {
     }
 
@@ -91,12 +97,8 @@ class MainSystemAgent : ActivitySystemAgent(), SystemAgent {
     }
     FastTaxiApp.addScreen(screen)
 
-    if (HandlyTester.isTestModeEnabled) {
-      HandlyTester.testMainScreen(screen)
-    } else {
-      screen.main()
-      events.onCreate?.invoke()
-    }
+    screen.main()
+    events.onCreate?.invoke()
   }
 
   override fun onStop() {
@@ -132,7 +134,7 @@ class MainUserAgent(val binding: ScreenMainBinding) : ServerAgent {
     desc: String,
     isDefaultModeEnabled: Boolean,
     startPointText: String?,
-    finishPointText: String?
+    finishPointText: String?,
   ) = doAction(desc) {
     binding.defaultStartButton.isVisible = isDefaultModeEnabled
     binding.filledPointsContainer.isVisible = !isDefaultModeEnabled
