@@ -15,7 +15,7 @@ class FastTaxiApp : Application(), App {
   override fun onCreate() {
     super.onCreate()
 
-    HandlyTester.isScenaryModeEnabled = false
+    HandlyTester.isTestModeEnabled = false
     HandlyTester.runSmokeTests()
 
     if (BuildConfig.DEBUG) {

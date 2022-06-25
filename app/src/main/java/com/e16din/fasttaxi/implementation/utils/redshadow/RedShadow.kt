@@ -8,7 +8,6 @@ typealias RedShadowAction = (
   subject: Class<*>,
   isEvent: Boolean,
   isStart: Boolean,
-  isAsync: Boolean,
   isFail: Boolean,
 ) -> Unit
 
@@ -19,22 +18,20 @@ object RedShadow {
   val shadowActions = mutableListOf<RedShadowAction>()
 
   fun init() {
-    shadowActions.add { name, _, _, _, _, _, _ ->
-      actionsHistory.add("$name")
+    shadowActions.add { name, _, _, _, _, _ ->
+      actionsHistory.add(name)
     }
   }
 
   // todo: add action to save log to file
   // todo: add action to send data to analytics
   fun makePrintLogShadowAction(): RedShadowAction =
-    { name: String?, data: Any?, subject: Class<*>, isEvent: Boolean, isStart: Boolean, isAsync: Boolean, isFail: Boolean ->
-      val subject = subject.simpleName
+    { name: String?, data: Any?, subject: Class<*>, isEvent: Boolean, isStart: Boolean, isFail: Boolean ->
       val startOrEnd =
         if (isEvent) "[Event]" else if (isStart) "[Action][Start]" else "[Action][End]"
-      val asyncOrNot = if (isAsync) "[Async]" else ""
-
       val nameAndData = if (data == null) name else "$name | data = $data"
-      val message = "$subject:$startOrEnd$asyncOrNot $nameAndData"
+      val subject = subject.simpleName
+      val message = "$subject:$startOrEnd $nameAndData"
       if (isFail) {
         Log.e("RedShadow", message)
       } else {
@@ -44,18 +41,18 @@ object RedShadow {
 
   fun onError(name: String, data: Any?, subject: Class<*>) {
     actionsHistory.add(name)
-    shadowActions.forEach { it.invoke(name, data, subject, true, false, false, true) }
+    shadowActions.forEach { it.invoke(name, data, subject, true, false,  true) }
   }
 
   fun onEvent(name: String?, data: Any?, subject: Class<*>) {
-    shadowActions.forEach { it.invoke("$name", data, subject, true, false, false, false) }
+    shadowActions.forEach { it.invoke("$name", data, subject, true, false,  false) }
   }
 
-  fun onActionStart(name: String?, data: Any?, isAsync: Boolean = false, subject: Class<*>) {
-    shadowActions.forEach { it.invoke("$name", data, subject, false, true, isAsync, false) }
+  fun onActionStart(name: String?, data: Any?, subject: Class<*>) {
+    shadowActions.forEach { it.invoke("$name", data, subject, false, true, false) }
   }
 
-  fun onActionEnd(name: String?, data: Any?, isAsync: Boolean = false, subject: Class<*>) {
-    shadowActions.forEach { it.invoke("$name", data, subject, false, false, isAsync, false) }
+  fun onActionEnd(name: String?, data: Any?, subject: Class<*>) {
+    shadowActions.forEach { it.invoke("$name", data, subject, false, false, false) }
   }
 }

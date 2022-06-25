@@ -10,7 +10,6 @@ import com.e16din.fasttaxi.databinding.ScreenMainBinding
 import com.e16din.fasttaxi.implementation.*
 import com.e16din.fasttaxi.implementation.fruits.OrderFruit
 import com.e16din.fasttaxi.implementation.utils.base.ActivitySystemAgent
-import com.e16din.fasttaxi.implementation.utils.base.ScreenState
 import com.e16din.fasttaxi.implementation.utils.handlytester.HandlyTester
 import com.yandex.mapkit.MapKitFactory
 
@@ -22,27 +21,27 @@ class MainScreen : Screen {
 
   val orderFruit = OrderFruit()
 
-  class State : ScreenState()
-  val state = State()
-
   fun main() {
-    systemAgent.events.onCreate = systemAgent.event("onCreate()") {
+    systemAgent.events.onCreate = systemAgent.onEvent("ОС открыла главный экран") {
       if (!FastTaxiApp.profileFruit.isAuthorized()) {
         systemAgent.doShowAuthScreen()
-        return@event
+        return@onEvent
       }
 
       val hasStartPointCond = Condition(
-        "Выбрана точка старта",
-        orderFruit.startPoint?.address != null
+        desc = "Выбрана точка старта",
+        value = orderFruit.startPoint?.address,
+        checkFunction = { !it.isNullOrBlank() }
       )
       val hasFinishPointCond = Condition(
-        "Выбрана точка финиша",
-        orderFruit.finishPoint?.address != null
+        desc = "Выбрана точка финиша",
+        value = orderFruit.finishPoint?.address,
+        checkFunction = { !it.isNullOrBlank() }
       )
 
       val isDefaultModeEnabled = checkConditions(listOf(hasStartPointCond), {}, {})
       userAgent.doUpdateOrderDetails(
+        desc = "Показываем пользователю детали заказа (в начальном/развернутом формате)",
         isDefaultModeEnabled = isDefaultModeEnabled,
         startPointText = orderFruit.startPoint?.address,
         finishPointText = orderFruit.finishPoint?.address
@@ -53,23 +52,22 @@ class MainScreen : Screen {
           hasStartPointCond,
           hasFinishPointCond
         ), {}, {})
-      userAgent.doUpdateOrderButton(isOrderButtonEnabled)
+      userAgent.doUpdateOrderButton(
+        desc = "Показываем пользователю кнопку ЗАКАЗАТЬ (активную/неактивную)",
+        enabled = isOrderButtonEnabled
+      )
     }
 
-    systemAgent.events.onStart = systemAgent.event("onStart") {
-      state.isTopmost = true
+    userAgent.onSelectStartPointClick = userAgent.onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ СТАРТА") {
+      systemAgent.doShowSelectPointsScreen("ОС открыла экран выбора адресов")
+    }
+    userAgent.onSelectFinishPointClick = userAgent.onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ ФИНИША") {
+      systemAgent.doShowSelectPointsScreen("ОС открыла экран выбора адресов")
+    }
+    userAgent.onOrderClick = userAgent.onEvent("Пользователь нажал ЗАКАЗАТЬ") {
     }
 
-    userAgent.onSelectStartPointClick = userAgent.event("onSelectStartPointClick") {
-      systemAgent.showSelectPointsScreen()
-    }
-    userAgent.onSelectFinishPointClick = userAgent.event("onSelectFinishPointClick") {
-      systemAgent.showSelectPointsScreen()
-    }
-    userAgent.onOrderClick = userAgent.event("onOrderClick") {
-    }
-
-    systemAgent.events.onBackPressed = systemAgent.event("onBackPressed") {
+    systemAgent.events.onBackPressed = systemAgent.onEvent("Пользователь нажал/свайпнул НАЗАД") {
       systemAgent.finish()
     }
   }
@@ -93,7 +91,7 @@ class MainSystemAgent : ActivitySystemAgent(), SystemAgent {
     }
     FastTaxiApp.addScreen(screen)
 
-    if (HandlyTester.isScenaryModeEnabled) {
+    if (HandlyTester.isTestModeEnabled) {
       HandlyTester.testMainScreen(screen)
     } else {
       screen.main()
@@ -123,7 +121,7 @@ class MainSystemAgent : ActivitySystemAgent(), SystemAgent {
     startActivity(intent)
   }
 
-  fun showSelectPointsScreen() = doAction {
+  fun doShowSelectPointsScreen(desc: String) = doAction(desc) {
     // todo: show SelectPointScreen
   }
 }
@@ -131,10 +129,11 @@ class MainSystemAgent : ActivitySystemAgent(), SystemAgent {
 class MainUserAgent(val binding: ScreenMainBinding) : ServerAgent {
 
   fun doUpdateOrderDetails(
+    desc: String,
     isDefaultModeEnabled: Boolean,
     startPointText: String?,
-    finishPointText: String?,
-  ) = doAction("updateOrderDetails()") {
+    finishPointText: String?
+  ) = doAction(desc) {
     binding.defaultStartButton.isVisible = isDefaultModeEnabled
     binding.filledPointsContainer.isVisible = !isDefaultModeEnabled
 
@@ -142,13 +141,13 @@ class MainUserAgent(val binding: ScreenMainBinding) : ServerAgent {
     binding.finishButton.text = finishPointText
   }
 
-  fun doUpdateOrderButton(enabled: Boolean) = doAction("doUpdateOrderButton()") {
+  fun doUpdateOrderButton(desc: String, enabled: Boolean) = doAction(desc) {
     binding.orderButton.isVisible = enabled
   }
 
-  var onSelectStartPointClick: JustEvent? = null
-  var onSelectFinishPointClick: JustEvent? = null
-  var onOrderClick: JustEvent? = null
+  var onSelectStartPointClick: JustEventBlock? = null
+  var onSelectFinishPointClick: JustEventBlock? = null
+  var onOrderClick: JustEventBlock? = null
 
   init {
     binding.defaultStartButton.setOnClickListener {

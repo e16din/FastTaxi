@@ -1,43 +1,53 @@
 package com.e16din.fasttaxi.implementation
 
+import android.os.Handler
 import com.e16din.fasttaxi.architecture.Screen
 import com.e16din.fasttaxi.architecture.Subject
 import com.e16din.fasttaxi.implementation.utils.redshadow.RedShadow
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import java.util.concurrent.atomic.AtomicInteger
 
-typealias Event<T> = (data: T) -> Unit
-typealias JustEvent = () -> Unit
+typealias EventBlock<T> = (data: T) -> Unit
+typealias JustEventBlock = () -> Unit
 
-inline fun <T> Subject.event(
-  name: String? = null,
-  crossinline onEvent: Event<T>,
-): Event<T> =
+inline fun <T> Subject.onEvent(
+  desc: String,
+  crossinline onEvent: EventBlock<T>,
+): EventBlock<T> =
   { data: T ->
-    RedShadow.onEvent(name, data, this.javaClass)
+    RedShadow.onEvent(desc, data, this.javaClass)
     onEvent.invoke(data)
+    stepsHistory.add(Event(desc))
   }
 
-inline fun Subject.event(
-  name: String? = null,
-  crossinline onEvent: JustEvent,
-): JustEvent = {
-  RedShadow.onEvent("$name", null, this.javaClass)
+val stepsHistory = mutableListOf<Step>()
+inline fun Subject.onEvent(
+  desc: String,
+  crossinline onEvent: JustEventBlock,
+): JustEventBlock = {
+  RedShadow.onEvent(desc, null, this.javaClass)
   onEvent.invoke()
+  stepsHistory.add(Event(desc))
 }
 
-typealias Action = () -> Unit
-
 fun Subject.doAction(
-  name: String? = null,
+  desc: String,
   data: Any? = null,
-  isAsync: Boolean = false,
-  action: Action,
+  onAction: () -> Unit,
 ) {
-  RedShadow.onActionStart(name, data, isAsync, this.javaClass)
-  action.invoke()
-  RedShadow.onActionEnd(name, data, isAsync, this.javaClass)
+  RedShadow.onActionStart(desc, data, this.javaClass)
+  onAction.invoke()
+  stepsHistory.add(Action(desc))
+  RedShadow.onActionEnd(desc, data, this.javaClass)
+}
+
+fun Handler.doLast(delay: Long = 550L, call: () -> Unit) {
+  this.removeCallbacksAndMessages(null)
+  this.postDelayed({
+    call.invoke()
+  }, delay)
 }
 
 val coroutineScopeFailActionName = "CoroutineScopeFail"
@@ -46,42 +56,92 @@ fun Subject.makeScope() =
     RedShadow.onError(coroutineScopeFailActionName, t.stackTraceToString(), this.javaClass)
   })
 
-class Condition(val desc: String, val value: Boolean)
+class Condition<T : Any?>(
+  val desc: String,
+  val value: T,
+  val falseValues: List<T> = emptyList(),
+  val trueValues: List<T> = emptyList(),
+  val checkFunction: (data: T) -> Boolean,
+)
 
 val checkOkActionName = "[Check] Ok"
 val checkNotOkActionName = "[Check] Not Ok"
-inline fun Screen.checkConditions(
-  conditions: List<Condition>,
-  crossinline onOk: () -> Unit,
-  crossinline onNotOk: (falseConditions: List<Condition>) -> Unit,
-): Boolean {
 
-  if (conditions.all { it.value }) {
+inline fun <T> Screen.checkConditions(
+  conditions: List<Condition<T>>,
+  crossinline onOk: () -> Unit,
+  crossinline onNotOk: (falseConditions: List<Condition<T>>) -> Unit,
+): Boolean {
+  // Test
+
+  conditions.forEach { condition ->
+    condition.falseValues.forEach { falseValue ->
+      check(!condition.checkFunction.invoke(falseValue))
+    }
+
+    condition.trueValues.forEach { trueValue ->
+      check(condition.checkFunction.invoke(trueValue))
+    }
+  }
+
+  // Real
+  val successConditions = conditions.filter { it.checkFunction.invoke(it.value) }
+  val failConditions = conditions - successConditions.toSet()
+
+  if (failConditions.isEmpty()) {
     RedShadow.onEvent(checkOkActionName, null, this.javaClass)
     onOk.invoke()
     return true
 
   } else {
-    val falseConditions = conditions.filter { !it.value }
-    falseConditions.forEach {
+    failConditions.forEach {
       RedShadow.onEvent(checkNotOkActionName, it.desc, this.javaClass)
     }
-    onNotOk.invoke(falseConditions)
+    onNotOk.invoke(failConditions)
     return false
   }
 }
 
-class Scenario(val script: () -> Unit, val body: () -> Unit) {
+class Scenario(
+  val desc: String,
+  val scripts: List<() -> Unit>,
+  val body: () -> Unit,
+) {
   fun pasteBody() {
     body.invoke()
   }
 
-  fun startScript() {
-    script.invoke()
+  fun startScripts() {
+    scripts.forEach {
+      it.invoke()
+    }
   }
 }
 
-fun scenario(script: () -> Unit, body: () -> Unit): Scenario {
-  return Scenario(script, body)
+fun scenario(
+  scenariosHolder: MutableList<Scenario>,
+  desc: String,
+  scripts: List<() -> Unit>,
+  body: () -> Unit,
+): Scenario {
+  val scenario = Scenario(desc, scripts, body)
+  scenariosHolder.add(scenario)
+  return scenario
+}
+
+private val uniqueStepsCount = AtomicInteger()
+fun generateStepId() = uniqueStepsCount.incrementAndGet()
+
+class Action(desc: String, id: Int = generateStepId()) : Step(id, desc, Type.Action)
+class Event(desc: String, id: Int = generateStepId()) : Step(id, desc, Type.Event)
+abstract class Step(
+  var id: Int,
+  var desc: String,
+  var type: Type,
+) {
+  enum class Type {
+    Action,
+    Event
+  }
 }
 

@@ -17,7 +17,7 @@ object HandlyTester {
     RedShadow.onError(coroutineScopeFailActionName, t.stackTraceToString(), this.javaClass)
   })
 
-  var isScenaryModeEnabled = false
+  var isTestModeEnabled = false
 
   val testActionName = "[Test]"
 
