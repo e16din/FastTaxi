@@ -4,12 +4,31 @@
   xmlns:tools="http://schemas.android.com/tools"
   android:layout_width="match_parent"
   android:layout_height="match_parent"
-  android:orientation="vertical"
-  tools:context=".MainSystemAgent">
+  android:orientation="vertical">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="8dp"
+    android:orientation="vertical">
+    <EditText
+      android:id="@+id/startPointField"
+      android:hint="@string/hint_start_point"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"/>
+
+    <EditText
+      android:layout_marginTop="8dp"
+      android:hint="@string/hint_finish_point"
+      android:id="@+id/finishPointField"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"/>
+
+  </LinearLayout>
 
   <androidx.recyclerview.widget.RecyclerView
-    android:id="@+id/adderessesList"
+    android:id="@+id/addressesList"
     android:layout_width="match_parent"
-    android:layout_height="match_parent" />
+    android:layout_height="500dp" />
 
 </LinearLayout>

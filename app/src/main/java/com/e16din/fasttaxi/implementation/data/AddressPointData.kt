@@ -1,8 +1,14 @@
 package com.e16din.fasttaxi.implementation.data
 
-class AddressPointData(
-  val address: String?,
+data class AddressPointData(
+  val street: String?,
+  val houseNumber: String?,
+  val city: String?,
   val location: PointLocation?,
 ) {
-  class PointLocation(val latitude: Long, val longitude: Long)
+  class PointLocation(var latitude: Double, var longitude: Double)
+
+  fun getAddress(): String {
+    return "$street, $houseNumber"
+  }
 }

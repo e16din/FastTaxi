@@ -1,6 +1,7 @@
 package com.e16din.fasttaxi.implementation.utils.base
 
 import android.os.Bundle
+import android.view.View
 import androidx.activity.OnBackPressedCallback
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
@@ -13,8 +14,8 @@ abstract class BottomSheetFragmentSystemAgent() : BottomSheetDialogFragment() {
     // NOTE: activity?.onBackPressed() not called here, if you need it call it on your SystemAgent(ore use finish() or etc)
   }
 
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
+  override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    super.onViewCreated(view, savedInstanceState)
 
     activity?.onBackPressedDispatcher?.addCallback(
       viewLifecycleOwner,

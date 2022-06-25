@@ -7,4 +7,6 @@
   <string name="enter_start_point">Enter start point</string>
   <string name="enter_finish_point">Enter finish point</string>
   <string name="where_to_go">Куда едем?</string>
+  <string name="hint_start_point">Откуда вас забрать?</string>
+  <string name="hint_finish_point">Куда поедем?</string>
 </resources>

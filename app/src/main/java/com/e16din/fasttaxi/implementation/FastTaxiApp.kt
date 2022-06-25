@@ -4,6 +4,7 @@ import android.app.Application
 import com.e16din.fasttaxi.BuildConfig
 import com.e16din.fasttaxi.architecture.App
 import com.e16din.fasttaxi.architecture.Screen
+import com.e16din.fasttaxi.implementation.fruits.OrderFruit
 import com.e16din.fasttaxi.implementation.fruits.ProfileFruit
 import com.e16din.fasttaxi.implementation.utils.redshadow.RedShadow
 import com.yandex.mapkit.MapKitFactory
@@ -47,5 +48,6 @@ class FastTaxiApp : Application(), App {
     }
 
     val profileFruit = ProfileFruit()
+    val orderFruit = OrderFruit()
   }
 }

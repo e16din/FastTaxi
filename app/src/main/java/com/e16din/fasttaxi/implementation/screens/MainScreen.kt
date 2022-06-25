@@ -12,13 +12,11 @@ import com.e16din.fasttaxi.implementation.fruits.OrderFruit
 import com.e16din.fasttaxi.implementation.utils.base.ActivitySystemAgent
 import com.yandex.mapkit.MapKitFactory
 
-class MainScreen : Screen {
+class MainScreen(val orderFruit: OrderFruit) : Screen {
 
   lateinit var systemAgent: MainSystemAgent
   lateinit var serverAgent: MainServerAgent
   lateinit var userAgent: MainUserAgent
-
-  val orderFruit = OrderFruit()
 
   fun main() {
     systemAgent.events.onCreate = systemAgent.onEvent("ОС открыла главный экран") {
@@ -37,13 +35,13 @@ class MainScreen : Screen {
         Condition(
           desc = "Выбрана точка старта",
           falseValues = falseValues,
-          value = orderFruit.startPoint?.address,
+          value = orderFruit.startPoint?.getAddress(),
           checkFunction = { !it.isNullOrBlank() }
         ),
         Condition(
           desc = "Выбрана точка финиша",
           falseValues = falseValues,
-          value = orderFruit.finishPoint?.address,
+          value = orderFruit.finishPoint?.getAddress(),
           checkFunction = { !it.isNullOrBlank() }
         )
       )
@@ -51,8 +49,8 @@ class MainScreen : Screen {
       userAgent.doUpdateOrderDetails(
         desc = "Показываем пользователю детали заказа (в начальном/развернутом формате)",
         isDefaultModeEnabled = hasNoAnyPoints,
-        startPointText = orderFruit.startPoint?.address,
-        finishPointText = orderFruit.finishPoint?.address
+        startPointText = orderFruit.startPoint?.getAddress(),
+        finishPointText = orderFruit.finishPoint?.getAddress()
       )
 
       val hasBothPoints = checkConditions(hasPointsConditions, {}, {})
@@ -89,7 +87,7 @@ class MainSystemAgent : ActivitySystemAgent(), SystemAgent {
     setContentView(binding.root)
 
     val screen = FastTaxiApp.getScreen()
-      ?: MainScreen()
+      ?: MainScreen(FastTaxiApp.orderFruit)
     screen.apply {
       serverAgent = MainServerAgent()
       systemAgent = this@MainSystemAgent
@@ -124,7 +122,10 @@ class MainSystemAgent : ActivitySystemAgent(), SystemAgent {
   }
 
   fun doShowSelectPointsScreen(desc: String) = doAction(desc) {
-    // todo: show SelectPointScreen
+    SelectPointsSystemAgent().show(
+      supportFragmentManager,
+      SelectPointsSystemAgent::class.java.simpleName
+    )
   }
 }
 

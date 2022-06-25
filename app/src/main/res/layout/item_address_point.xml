@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:paddingVertical="8dp"
+  android:paddingHorizontal="16dp"
+  android:orientation="vertical">
+
+  <TextView
+    android:id="@+id/addressLabel"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textSize="24sp"
+    android:textColor="@color/black"
+    android:text="Address Street"/>
+
+  <TextView
+    android:id="@+id/additionLabel"
+    android:layout_marginTop="4dp"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textSize="20sp"
+    android:textColor="@color/gray"
+    android:text="City"/>
+
+</LinearLayout>
