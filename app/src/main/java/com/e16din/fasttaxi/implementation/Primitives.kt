@@ -1,6 +1,7 @@
 package com.e16din.fasttaxi.implementation
 
 import android.os.Handler
+import com.e16din.fasttaxi.BuildConfig
 import com.e16din.fasttaxi.architecture.Screen
 import com.e16din.fasttaxi.architecture.Subject
 import com.e16din.fasttaxi.implementation.utils.redshadow.RedShadow
@@ -81,25 +82,27 @@ inline fun <T> Screen.checkConditions(
   crossinline onNotOk: (falseConditions: List<Condition<T>>) -> Unit,
   invert: Boolean = false,
 ): Boolean {
-  // Тестировать falseValues и trueValues,
-  // если в логике условий ошибка, пусть она вскроется сразу и бросит исключение
-  conditions.forEach { condition ->
-    condition.falseValues.forEach { falseValue ->
-      val result = !condition.checkFunction.invoke(falseValue)
-      if(!result) {
-        RedShadow.onError("[Test False Value] Not Ok", condition.desc, this.javaClass)
-        RedShadow.onError("[Test False Value] Not Ok", falseValue, this.javaClass)
+  if (BuildConfig.DEBUG) {
+    // Тестировать falseValues и trueValues,
+    // если в логике условий ошибка, пусть она вскроется сразу и бросит исключение
+    conditions.forEach { condition ->
+      condition.falseValues.forEach { falseValue ->
+        val result = !condition.checkFunction.invoke(falseValue)
+        if (!result) {
+          RedShadow.onError("[Test False Value] Not Ok", condition.desc, this.javaClass)
+          RedShadow.onError("[Test False Value] Not Ok", falseValue, this.javaClass)
+        }
+        check(result)
       }
-      check(result)
-    }
 
-    condition.trueValues.forEach { trueValue ->
-      val result = condition.checkFunction.invoke(trueValue)
-      if(!result) {
-        RedShadow.onError("[Test True Value] Not Ok", condition.desc, this.javaClass)
-        RedShadow.onError("[Test True Value] Not Ok", trueValue, this.javaClass)
+      condition.trueValues.forEach { trueValue ->
+        val result = condition.checkFunction.invoke(trueValue)
+        if (!result) {
+          RedShadow.onError("[Test True Value] Not Ok", condition.desc, this.javaClass)
+          RedShadow.onError("[Test True Value] Not Ok", trueValue, this.javaClass)
+        }
+        check(result)
       }
-      check(result)
     }
   }
 
