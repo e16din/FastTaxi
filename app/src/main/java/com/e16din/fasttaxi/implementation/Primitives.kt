@@ -1,6 +1,7 @@
 package com.e16din.fasttaxi.implementation
 
 import android.os.Handler
+import android.os.Looper
 import com.e16din.fasttaxi.BuildConfig
 import com.e16din.fasttaxi.architecture.Screen
 import com.e16din.fasttaxi.architecture.Subject
@@ -13,15 +14,6 @@ import java.util.concurrent.atomic.AtomicInteger
 typealias EventBlock<T> = (data: T) -> Unit
 typealias JustEventBlock = () -> Unit
 
-inline fun <T> Subject.onEvent(
-  desc: String,
-  crossinline onEvent: EventBlock<T>,
-): EventBlock<T> =
-  { data: T ->
-    RedShadow.onEvent(desc, data, this.javaClass)
-    onEvent.invoke(data)
-    stepsHistory.add(Event(desc))
-  }
 
 val stepsHistory = mutableListOf<Step>()
 inline fun Subject.onEvent(
@@ -33,15 +25,19 @@ inline fun Subject.onEvent(
   stepsHistory.add(Event(desc))
 }
 
-fun Subject.doAction(
+fun <T: Subject> T.doAction(
   desc: String,
   data: Any? = null,
-  onAction: () -> Unit,
+  onAction: (subject:T) -> Unit,
 ) {
   RedShadow.onActionStart(desc, data, this.javaClass)
-  onAction.invoke()
+  onAction.invoke(this)
   stepsHistory.add(Action(desc))
   RedShadow.onActionEnd(desc, data, this.javaClass)
+}
+
+inline fun Screen.feature(desc: String, onEvent: JustEventBlock) {
+  onEvent.invoke()
 }
 
 fun Handler.doLast(delay: Long = 350L, call: () -> Unit) {
@@ -68,7 +64,7 @@ class Condition<T : Any?>(
 val checkOkActionName = "[Check] Ok"
 val checkNotOkActionName = "[Check] Not Ok"
 
-inline fun <T> Screen.checkConditionsNot(
+inline fun <T> Any.checkConditionsNot(
   conditions: List<Condition<T>>,
   crossinline onOk: () -> Unit,
   crossinline onNotOk: (falseConditions: List<Condition<T>>) -> Unit,
@@ -76,7 +72,7 @@ inline fun <T> Screen.checkConditionsNot(
   return checkConditions(conditions, onOk, onNotOk, invert = true)
 }
 
-inline fun <T> Screen.checkConditions(
+inline fun <T> Any.checkConditions(
   conditions: List<Condition<T>>,
   crossinline onOk: () -> Unit,
   crossinline onNotOk: (falseConditions: List<Condition<T>>) -> Unit,
@@ -145,3 +141,5 @@ abstract class Step(
   }
 }
 
+val clicksHandler = Handler(Looper.getMainLooper())
+val fieldsHandler = Handler(Looper.getMainLooper())
