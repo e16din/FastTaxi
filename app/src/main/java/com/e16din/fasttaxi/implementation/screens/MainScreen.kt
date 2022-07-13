@@ -5,8 +5,6 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import com.e16din.fasttaxi.architecture.ScreenState
-import com.e16din.fasttaxi.architecture.subjects.SystemActor
-import com.e16din.fasttaxi.architecture.subjects.UserActor
 import com.e16din.fasttaxi.databinding.ScreenMainBinding
 import com.e16din.fasttaxi.implementation.*
 import com.yandex.mapkit.MapKitFactory
@@ -27,7 +25,7 @@ class MainActivity : AppCompatActivity() {
       ?: MainScreenState()
     FastTaxiApp.addScreenState(screenState)
 
-    fun SystemActor.doShowSelectPointsScreen(desc: String) = SystemActor.doAction(desc) {
+    fun doShowSelectPointsScreen() {
       SelectPointsFragment().show(
         supportFragmentManager,
         SelectPointsFragment::class.java.simpleName
@@ -35,14 +33,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     binding.defaultStartButton.setOnClickListener {
-      UserActor.onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ СТАРТА") {
-        SystemActor.doShowSelectPointsScreen("ОС открыла экран выбора адресов (default)")
+      onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ СТАРТА") {
+        doAction("ОС открыла экран выбора адресов (default)") {
+          doShowSelectPointsScreen()
+        }
       }
     }
 
     fun onSelectStartPointClick() {
-      UserActor.onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ ФИНИША") {
-        SystemActor.doShowSelectPointsScreen("ОС открыла экран выбора адресов")
+      onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ ФИНИША") {
+        doAction("ОС открыла экран выбора адресов") {
+          doShowSelectPointsScreen()
+        }
       }
     }
 
@@ -53,14 +55,14 @@ class MainActivity : AppCompatActivity() {
       onSelectStartPointClick()
     }
     binding.orderButton.setOnClickListener {
-      UserActor.onEvent("Пользователь нажал ЗАКАЗАТЬ") {
+      onEvent("Пользователь нажал ЗАКАЗАТЬ") {
         // todo:
       }
     }
 
-    SystemActor.onEvent("ОС открыла главный экран") {
+    onEvent("ОС открыла главный экран") {
       if (!FastTaxiApp.profileFruit.isAuthorized()) {
-        SystemActor.doAction("Открыть экран авторизации") {
+        doAction("Открыть экран авторизации") {
           val intent = Intent(this, AuthActivity::class.java)
           startActivity(intent)
         }
@@ -89,7 +91,7 @@ class MainActivity : AppCompatActivity() {
       )
       val hasNoAnyPoints = checkConditionsNot(hasPointsConditions, {}, {})
 
-      UserActor.doAction("Показываем пользователю детали заказа (в начальном/развернутом формате)") {
+      doAction("Показываем пользователю детали заказа (в начальном/развернутом формате)") {
         binding.defaultStartButton.isVisible = hasNoAnyPoints
         binding.filledPointsContainer.isVisible = !hasNoAnyPoints
 
@@ -98,7 +100,7 @@ class MainActivity : AppCompatActivity() {
       }
 
       val hasBothPoints = checkConditions(hasPointsConditions, {}, {})
-      UserActor.doAction("Показываем пользователю кнопку ЗАКАЗАТЬ (активную/неактивную)") {
+      doAction("Показываем пользователю кнопку ЗАКАЗАТЬ (активную/неактивную)") {
         binding.orderButton.isVisible = hasBothPoints
       }
     }
@@ -117,7 +119,7 @@ class MainActivity : AppCompatActivity() {
   }
 
   override fun onBackPressed() {
-    SystemActor.onEvent("Пользователь нажал/свайпнул НАЗАД") {
+    onEvent("Пользователь нажал/свайпнул НАЗАД") {
       finish()
     }
   }

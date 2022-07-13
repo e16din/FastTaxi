@@ -6,11 +6,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.addTextChangedListener
 import com.e16din.fasttaxi.FastTaxiServer
 import com.e16din.fasttaxi.architecture.ScreenState
-import com.e16din.fasttaxi.architecture.subjects.DataActor
-import com.e16din.fasttaxi.architecture.subjects.SystemActor
-import com.e16din.fasttaxi.architecture.subjects.UserActor
 import com.e16din.fasttaxi.databinding.ScreenAuthBinding
 import com.e16din.fasttaxi.implementation.*
+import com.e16din.fasttaxi.implementation.utils.redshadow.isLatinChar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -25,20 +23,20 @@ class AuthActivity : AppCompatActivity() {
 
   private val screenState = AuthScreenState()
 
-  private val binding = ScreenAuthBinding.inflate(layoutInflater)
+  private val scope = makeScope()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-
+    val binding = ScreenAuthBinding.inflate(layoutInflater)
     setContentView(binding.root)
 
     val screen = FastTaxiApp.getScreenState()
       ?: AuthScreenState()
     FastTaxiApp.addScreenState(screen)
 
-    SystemActor.onEvent("ОС открыла экран авторизации") {
+    onEvent("ОС открыла экран авторизации") {
       val isEnterButtonEnabled = checkLoginPasswordValues()
-      UserActor.doAction(
+      doAction(
         desc = "Показать пользователю кнопку ВОЙТИ (активную/неактивную)",
         data = isEnterButtonEnabled
       ) {
@@ -48,10 +46,10 @@ class AuthActivity : AppCompatActivity() {
 
     binding.loginField.addTextChangedListener { login ->
       fieldsHandler.doLast {
-        UserActor.onEvent("Пользователь ввел логин") {
+        onEvent("Пользователь ввел логин") {
           screenState.login = login.toString()
           val isEnterButtonEnabled = checkLoginPasswordValues()
-          UserActor.doAction("Приложение сделало кнопку доступной/недоступной",
+          doAction("Приложение сделало кнопку доступной/недоступной",
             isEnterButtonEnabled) {
             binding.signInButton.isEnabled = isEnterButtonEnabled
           }
@@ -60,10 +58,10 @@ class AuthActivity : AppCompatActivity() {
     }
     binding.passwordField.addTextChangedListener { password ->
       fieldsHandler.doLast {
-        UserActor.onEvent("Пользователь ввел логин") {
+        onEvent("Пользователь ввел логин") {
           screenState.password = password.toString()
           val isEnterButtonEnabled = checkLoginPasswordValues()
-          UserActor.doAction("Приложение сделало кнопку доступной/недоступной",
+          doAction("Приложение сделало кнопку доступной/недоступной",
             isEnterButtonEnabled) {
             binding.signInButton.isEnabled = isEnterButtonEnabled
           }
@@ -72,9 +70,9 @@ class AuthActivity : AppCompatActivity() {
     }
     binding.signInButton.setOnClickListener {
       clicksHandler.doLast {
-        UserActor.onEvent(desc = "Пользователь нажал кнопку ВОЙТИ") {
-          DataActor.doAction(desc = "Приложение запрашивает авторизацию на сервере") {
-            DataActor.scope.launch(Dispatchers.Main) {
+        onEvent(desc = "Пользователь нажал кнопку ВОЙТИ") {
+          doAction(desc = "Приложение запрашивает авторизацию на сервере") {
+            scope.launch(Dispatchers.Main) {
               val result = withContext(Dispatchers.IO) {
                 FastTaxiServer.auth(
                   login = requireNotNull(screenState.login),
@@ -84,8 +82,8 @@ class AuthActivity : AppCompatActivity() {
 
               when (result.success) {
                 true -> {
-                  DataActor.onEvent("Сервер прислал ответ - авторизация успешна") {
-                    SystemActor.doAction("ОС закрыла экран авторизации") {
+                  onEvent("Сервер прислал ответ - авторизация успешна") {
+                    doAction("Система закрыла экран авторизации") {
                       FastTaxiApp.profileFruit.token = result.data?.token
                       FastTaxiApp.removeScreenState(AuthScreenState::class)
                       finish()
@@ -93,8 +91,8 @@ class AuthActivity : AppCompatActivity() {
                   }
                 }
                 false -> {
-                  DataActor.onEvent("Сервер прислал ответ - отказ в авторизации") {
-                    UserActor.doAction("Приложение показало ошибку авторизации пользователю") {
+                  onEvent("Сервер прислал ответ - отказ в авторизации") {
+                    doAction("Приложение показало ошибку авторизации пользователю") {
                       Toast.makeText(binding.root.context, "Fail!", Toast.LENGTH_SHORT)
                         .show()
                     }
@@ -124,6 +122,14 @@ class AuthActivity : AppCompatActivity() {
         ),
         value = screenState.login,
         checkFunction = { it?.length in 4..15 }
+      ),
+      Condition(
+        desc = "Логин только латиницей",
+        falseValues = listOf(
+          "олдоолддоододо",
+        ),
+        value = screenState.login,
+        checkFunction = { value -> value?.all { it.isLatinChar() } == true }
       ),
       Condition(
         desc = "Логин без пробелов",

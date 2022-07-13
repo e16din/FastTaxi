@@ -4,39 +4,35 @@ import android.os.Handler
 import android.os.Looper
 import com.e16din.fasttaxi.BuildConfig
 import com.e16din.fasttaxi.architecture.Screen
-import com.e16din.fasttaxi.architecture.Subject
 import com.e16din.fasttaxi.implementation.utils.redshadow.RedShadow
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import java.util.concurrent.atomic.AtomicInteger
 
-typealias EventBlock<T> = (data: T) -> Unit
-typealias JustEventBlock = () -> Unit
-
 
 val stepsHistory = mutableListOf<Step>()
-inline fun Subject.onEvent(
+inline fun Any.onEvent(
   desc: String,
-  crossinline onEvent: JustEventBlock,
-): JustEventBlock = {
+  crossinline onEvent: () -> Unit,
+) {
   RedShadow.onEvent(desc, null, this.javaClass)
   onEvent.invoke()
   stepsHistory.add(Event(desc))
 }
 
-fun <T: Subject> T.doAction(
+fun Any.doAction(
   desc: String,
   data: Any? = null,
-  onAction: (subject:T) -> Unit,
+  onAction: () -> Unit,
 ) {
   RedShadow.onActionStart(desc, data, this.javaClass)
-  onAction.invoke(this)
+  onAction.invoke()
   stepsHistory.add(Action(desc))
   RedShadow.onActionEnd(desc, data, this.javaClass)
 }
 
-inline fun Screen.feature(desc: String, onEvent: JustEventBlock) {
+inline fun Screen.feature(desc: String, onEvent: () -> Unit) {
   onEvent.invoke()
 }
 
@@ -48,7 +44,7 @@ fun Handler.doLast(delay: Long = 350L, call: () -> Unit) {
 }
 
 val coroutineScopeFailActionName = "CoroutineScopeFail"
-fun Subject.makeScope() =
+fun Any.makeScope() =
   CoroutineScope(Dispatchers.Main + CoroutineExceptionHandler { _, t ->
     RedShadow.onError(coroutineScopeFailActionName, t.stackTraceToString(), this.javaClass)
   })
