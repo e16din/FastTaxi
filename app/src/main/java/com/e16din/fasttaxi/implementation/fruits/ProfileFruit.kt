@@ -1,8 +1,10 @@
 package com.e16din.fasttaxi.implementation.fruits
 
 import com.e16din.fasttaxi.architecture.Fruit
+import kotlinx.serialization.Serializable
 
-class ProfileFruit(
+@Serializable
+data class ProfileFruit(
   var token: String? = null,
 ) : Fruit {
 

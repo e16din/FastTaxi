@@ -2,6 +2,7 @@ package com.e16din.fasttaxi.implementation
 
 import android.app.Application
 import com.e16din.fasttaxi.BuildConfig
+import com.e16din.fasttaxi.LocalDataSource
 import com.e16din.fasttaxi.architecture.App
 import com.e16din.fasttaxi.architecture.ScreenState
 import com.e16din.fasttaxi.implementation.fruits.OrderFruit
@@ -14,6 +15,13 @@ class FastTaxiApp : Application(), App {
 
   override fun onCreate() {
     super.onCreate()
+
+    LocalDataSource.init(this)
+
+    profileFruit = LocalDataSource.loadLocalData(ProfileFruit::class)
+      ?: ProfileFruit()
+    orderFruit = LocalDataSource.loadLocalData(OrderFruit::class)
+      ?: OrderFruit()
 
     if (BuildConfig.DEBUG) {
       RedShadow.init()
@@ -32,9 +40,9 @@ class FastTaxiApp : Application(), App {
     val activeScreensStatesMap = mutableMapOf<String, ScreenState>()
 
     inline fun <reified T : ScreenState?> getScreenState(): T? {
-      return activeScreensStatesMap[T::class.java.simpleName] as T
+      return activeScreensStatesMap[T::class.java.simpleName] as T?
     }
-    
+
     fun addScreenState(screenState: ScreenState) {
       val key = screenState.javaClass.simpleName
       activeScreensStatesMap[key] = screenState
@@ -47,7 +55,7 @@ class FastTaxiApp : Application(), App {
       RedShadow.onEvent("removeScreen: $key", null, FastTaxiApp::class.java)
     }
 
-    val profileFruit = ProfileFruit()
-    val orderFruit = OrderFruit()
+    lateinit var profileFruit: ProfileFruit
+    lateinit var orderFruit: OrderFruit
   }
 }

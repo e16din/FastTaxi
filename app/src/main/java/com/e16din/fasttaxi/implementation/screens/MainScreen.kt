@@ -14,59 +14,66 @@ class MainActivity : AppCompatActivity() {
   private lateinit var binding: ScreenMainBinding
 
   class MainScreenState() : ScreenState
+
   var screenState = MainScreenState()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    binding = ScreenMainBinding.inflate(layoutInflater)
-    setContentView(binding.root)
-
-    screenState = FastTaxiApp.getScreenState()
-      ?: MainScreenState()
-    FastTaxiApp.addScreenState(screenState)
-
-    fun doShowSelectPointsScreen() {
-      SelectPointsFragment().show(
-        supportFragmentManager,
-        SelectPointsFragment::class.java.simpleName
-      )
-    }
-
-    binding.defaultStartButton.setOnClickListener {
-      onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ СТАРТА") {
-        doAction("ОС открыла экран выбора адресов (default)") {
-          doShowSelectPointsScreen()
-        }
-      }
-    }
-
-    fun onSelectStartPointClick() {
-      onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ ФИНИША") {
-        doAction("ОС открыла экран выбора адресов") {
-          doShowSelectPointsScreen()
-        }
-      }
-    }
-
-    binding.startButton.setOnClickListener {
-      onSelectStartPointClick()
-    }
-    binding.finishButton.setOnClickListener {
-      onSelectStartPointClick()
-    }
-    binding.orderButton.setOnClickListener {
-      onEvent("Пользователь нажал ЗАКАЗАТЬ") {
-        // todo:
-      }
-    }
-
     onEvent("ОС открыла главный экран") {
-      if (!FastTaxiApp.profileFruit.isAuthorized()) {
-        doAction("Открыть экран авторизации") {
-          val intent = Intent(this, AuthActivity::class.java)
-          startActivity(intent)
+      feature("При открытии главного экрана") {
+        binding = ScreenMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        screenState = FastTaxiApp.getScreenState()
+          ?: MainScreenState()
+        FastTaxiApp.addScreenState(screenState)
+
+        if (!FastTaxiApp.profileFruit.isAuthorized()) {
+          doAction("Открыть экран авторизации") {
+            val intent = Intent(this, AuthActivity::class.java)
+            startActivity(intent)
+          }
+          return@onEvent
         }
-        return@onEvent
+      }
+
+      fun doShowSelectPointsScreen() = feature("Показать экран выбора адресов(только один)") {
+        val alreadyStarted =
+          FastTaxiApp.getScreenState<SelectPointsFragment.SelectPointsScreenState>() != null
+        if (!alreadyStarted) {
+          SelectPointsFragment().show(
+            supportFragmentManager,
+            SelectPointsFragment::class.java.simpleName
+          )
+        }
+      }
+
+      binding.defaultStartButton.setOnClickListener {
+        onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ СТАРТА") {
+          doAction("ОС открыла экран выбора адресов (default)") {
+            doShowSelectPointsScreen()
+          }
+        }
+      }
+
+      fun onSelectStartPointClick() {
+        onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ ФИНИША") {
+          doAction("ОС открыла экран выбора адресов") {
+            doShowSelectPointsScreen()
+          }
+        }
+      }
+
+      binding.startButton.setOnClickListener {
+        onSelectStartPointClick()
+      }
+      binding.finishButton.setOnClickListener {
+        onSelectStartPointClick()
+      }
+      binding.orderButton.setOnClickListener {
+        onEvent("Пользователь нажал ЗАКАЗАТЬ") {
+          // todo:
+        }
       }
 
       val falseValues = listOf(

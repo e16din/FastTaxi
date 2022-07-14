@@ -3,7 +3,6 @@ package com.e16din.fasttaxi.implementation
 import android.os.Handler
 import android.os.Looper
 import com.e16din.fasttaxi.BuildConfig
-import com.e16din.fasttaxi.architecture.Screen
 import com.e16din.fasttaxi.implementation.utils.redshadow.RedShadow
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -14,9 +13,10 @@ import java.util.concurrent.atomic.AtomicInteger
 val stepsHistory = mutableListOf<Step>()
 inline fun Any.onEvent(
   desc: String,
+  data: Any? = null,
   crossinline onEvent: () -> Unit,
 ) {
-  RedShadow.onEvent(desc, null, this.javaClass)
+  RedShadow.onEvent(desc, data, this.javaClass)
   onEvent.invoke()
   stepsHistory.add(Event(desc))
 }
@@ -32,7 +32,7 @@ fun Any.doAction(
   RedShadow.onActionEnd(desc, data, this.javaClass)
 }
 
-inline fun Screen.feature(desc: String, onEvent: () -> Unit) {
+inline fun feature(desc: String, onEvent: () -> Unit) {
   onEvent.invoke()
 }
 

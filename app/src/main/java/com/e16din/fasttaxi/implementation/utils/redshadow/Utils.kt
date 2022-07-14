@@ -1,5 +1,8 @@
 package com.e16din.fasttaxi.implementation.utils.redshadow
 
+import java.nio.charset.Charset
+
 fun Char.isLatinChar(): Boolean {
-  TODO("Not yet implemented")
+  val encoder = Charset.forName("US-ASCII").newEncoder()
+  return encoder.canEncode(this)
 }

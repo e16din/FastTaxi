@@ -5,10 +5,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.addTextChangedListener
 import com.e16din.fasttaxi.FastTaxiServer
+import com.e16din.fasttaxi.LocalDataSource
 import com.e16din.fasttaxi.architecture.ScreenState
 import com.e16din.fasttaxi.databinding.ScreenAuthBinding
 import com.e16din.fasttaxi.implementation.*
-import com.e16din.fasttaxi.implementation.utils.redshadow.isLatinChar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -83,8 +83,12 @@ class AuthActivity : AppCompatActivity() {
               when (result.success) {
                 true -> {
                   onEvent("Сервер прислал ответ - авторизация успешна") {
+                    doAction("Приложение сохранило токен авторизации") {
+                      val profileFruit = FastTaxiApp.profileFruit
+                      profileFruit.token = result.data?.token
+                      LocalDataSource.saveLocalData(profileFruit)
+                    }
                     doAction("Система закрыла экран авторизации") {
-                      FastTaxiApp.profileFruit.token = result.data?.token
                       FastTaxiApp.removeScreenState(AuthScreenState::class)
                       finish()
                     }
@@ -123,14 +127,19 @@ class AuthActivity : AppCompatActivity() {
         value = screenState.login,
         checkFunction = { it?.length in 4..15 }
       ),
-      Condition(
-        desc = "Логин только латиницей",
-        falseValues = listOf(
-          "олдоолддоододо",
-        ),
-        value = screenState.login,
-        checkFunction = { value -> value?.all { it.isLatinChar() } == true }
-      ),
+      // todo: написать регулярку для проверки логина
+//      Condition(
+//        // todo:        (узнать какие знаки разрешены для логина)
+//        desc = "Логин только латиницей, числами, и разрешенными знаками",
+//        falseValues = listOf(
+//          "олдоолддоододо",
+//          "олдоолддоододо12",
+//          "олдоолддоододо12-sdas_were",
+//          "олд-_оолддоододо12",
+//        ),
+//        value = screenState.login,
+//        checkFunction = { value -> value?.all { it.isLatinChar() } == true }
+//      ),
       Condition(
         desc = "Логин без пробелов",
         falseValues = listOf(
