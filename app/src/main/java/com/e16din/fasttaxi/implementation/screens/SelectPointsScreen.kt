@@ -11,6 +11,7 @@ import androidx.core.widget.addTextChangedListener
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.e16din.fasttaxi.FastTaxiServer
+import com.e16din.fasttaxi.LocalDataSource
 import com.e16din.fasttaxi.architecture.ScreenState
 import com.e16din.fasttaxi.databinding.ItemAddressPointBinding
 import com.e16din.fasttaxi.databinding.ScreenSelectAddressBinding
@@ -109,6 +110,9 @@ class SelectPointsFragment : BottomSheetDialogFragment() {
                   FastTaxiApp.orderFruit.finishPoint = null
                 }
               }
+              doAction("Сохранить выбранные адреса 1") {
+                LocalDataSource.saveLocalData(FastTaxiApp.orderFruit)
+              }
             }
           }
           doAction("Запросить адреса с сервера 2", query) {
@@ -178,6 +182,9 @@ class SelectPointsFragment : BottomSheetDialogFragment() {
                 }
               }
             }
+          }
+          doAction("Сохранить выбранные адреса 2") {
+            LocalDataSource.saveLocalData(FastTaxiApp.orderFruit)
           }
         }
       })
