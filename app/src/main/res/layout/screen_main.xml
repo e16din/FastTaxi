@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-  android:layout_width="match_parent"
   xmlns:tools="http://schemas.android.com/tools"
-  tools:background="@color/black"
   android:id="@+id/container"
-  android:layout_height="match_parent">
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  tools:background="@color/black">
 
   <com.yandex.mapkit.mapview.MapView
     android:id="@+id/mapView"
@@ -12,14 +12,14 @@
     android:layout_height="match_parent" />
 
   <LinearLayout
+    android:id="@+id/orderDetailsContainer"
+    android:layout_width="match_parent"
+    android:layout_height="300dp"
     android:layout_gravity="bottom"
     android:background="@color/white"
-    android:id="@+id/orderDetailsContainer"
-    android:orientation="vertical"
     android:clickable="true"
     android:gravity="center_horizontal"
-    android:layout_width="match_parent"
-    android:layout_height="300dp">
+    android:orientation="vertical">
 
     <TextView
       android:id="@+id/defaultStartButton"
@@ -33,35 +33,40 @@
       android:padding="16dp"
       android:text="@string/where_to_go" />
 
-
     <LinearLayout
       android:id="@+id/filledPointsContainer"
       android:layout_width="match_parent"
-      android:visibility="gone"
-      tools:visibility="visible"
       android:layout_height="wrap_content"
-      android:orientation="vertical">
+      android:orientation="vertical"
+      android:visibility="gone"
+      tools:visibility="visible">
 
-      <Button
+      <TextView
         android:id="@+id/startButton"
+        android:background="@drawable/shape_default_start_point"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:layout_marginTop="24dp"
-        android:backgroundTint="@color/select_point_action_color"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/colorAccent"
+        android:foreground="?android:selectableItemBackground"
         android:gravity="center_vertical"
-        android:padding="8dp"
+        android:padding="16dp"
         android:text="@string/enter_start_point" />
 
-      <Button
+      <TextView
         android:id="@+id/finishButton"
+        android:background="@drawable/shape_default_start_point"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="16dp"
-        android:backgroundTint="@color/select_point_action_color"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/colorAccent"
+        android:foreground="?android:selectableItemBackground"
         android:gravity="center_vertical"
-        android:padding="8dp"
+        android:padding="16dp"
         android:text="@string/enter_finish_point" />
     </LinearLayout>
 
@@ -74,4 +79,5 @@
       android:text="@string/order" />
 
   </LinearLayout>
+
 </FrameLayout>

@@ -1,6 +1,6 @@
 package com.e16din.fasttaxi
 
-class Plan {
+object Plan {
 // Сделать приложение такси за месяц
 
   fun day9() {

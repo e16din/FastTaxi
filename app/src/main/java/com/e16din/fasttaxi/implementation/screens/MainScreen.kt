@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
+import com.e16din.fasttaxi.R
 import com.e16din.fasttaxi.architecture.ScreenState
 import com.e16din.fasttaxi.databinding.ScreenMainBinding
 import com.e16din.fasttaxi.implementation.*
@@ -13,119 +14,118 @@ class MainActivity : AppCompatActivity() {
 
   private lateinit var binding: ScreenMainBinding
 
-  class MainScreenState() : ScreenState
+  class MainScreenState : ScreenState
 
-  var screenState = MainScreenState()
+  private var screenState = MainScreenState()
 
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    onEvent("ОС открыла главный экран") {
-      feature("При открытии главного экрана") {
-        binding = ScreenMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+  private val events = Events()
+  private val conditions = Conditions()
 
-        screenState = FastTaxiApp.getScreenState()
-          ?: MainScreenState()
-        FastTaxiApp.addScreenState(screenState)
+  private fun main() {
+    doAction(
+      desc = "Открыть экран авторизации",
+      events = listOf(
+        events.onCreate
+      )
+    ) {
+      if (!FastTaxiApp.profileFruit.isAuthorized()) {
+        val intent = Intent(this, AuthActivity::class.java)
+        startActivity(intent)
+      }
+    }
 
-        if (!FastTaxiApp.profileFruit.isAuthorized()) {
-          doAction("Открыть экран авторизации") {
-            val intent = Intent(this, AuthActivity::class.java)
-            startActivity(intent)
-          }
-          return@onEvent
+    doAction( // Система
+      desc = "Открыть экран выбора адресов",
+      events = listOf(
+        events.onSelectDefaultStartPointClick,
+        events.onSelectStartPointClick,
+        events.onSelectFinishPointClick,
+      )
+    ) {
+      val alreadyStarted =
+        FastTaxiApp.getScreenState<SelectPointsFragment.SelectPointsScreenFruit>() != null
+      if (!alreadyStarted) {
+        SelectPointsFragment().show(
+          supportFragmentManager,
+          SelectPointsFragment::class.java.simpleName
+        )
+      }
+    }
+
+    feature("Показать блок деталей заказа")
+    {
+      doAction(
+        desc = "Показываем пользователю точки старта/финиша (в деталях заказа)",
+        events = listOf(
+          events.onResume
+        )
+      ) {
+        binding.defaultStartButton.isVisible = conditions.hasNoAnyPoints
+        binding.filledPointsContainer.isVisible = !conditions.hasNoAnyPoints
+
+        with(FastTaxiApp.orderFruit) {
+          binding.startButton.text = "Старт: " + (startPoint?.getAddress() // todo: сделать иконки старта/финиша, удалить текст
+            ?: getString(R.string.where_to_go))
+          binding.finishButton.text = "Финиш: " + (finishPoint?.getAddress()
+            ?: getString(R.string.where_to_go))
         }
       }
 
-      fun doShowSelectPointsScreen() = feature("Показать экран выбора адресов(только один)") {
-        val alreadyStarted =
-          FastTaxiApp.getScreenState<SelectPointsFragment.SelectPointsScreenState>() != null
-        if (!alreadyStarted) {
-          SelectPointsFragment().show(
-            supportFragmentManager,
-            SelectPointsFragment::class.java.simpleName
-          )
-        }
+      doAction(
+        desc = "Показываем пользователю кнопку ЗАКАЗАТЬ (активную/неактивную)",
+        events = listOf(events.onResume, )
+      ) {
+        binding.orderButton.isVisible = conditions.hasBothPoints
       }
 
-      binding.defaultStartButton.setOnClickListener {
-        onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ СТАРТА") {
-          doAction("ОС открыла экран выбора адресов (default)") {
-            doShowSelectPointsScreen()
-          }
-        }
+      doAction(
+        desc = "Показать экран пойска машины",
+        events = listOf(events.onOrderClick)
+      ) {
+        //TODO:
       }
+    }
 
-      fun onSelectStartPointClick() {
-        onEvent("Пользователь нажал ВЫБРАТЬ ТОЧКУ ФИНИША") {
-          doAction("ОС открыла экран выбора адресов") {
-            doShowSelectPointsScreen()
-          }
-        }
-      }
-
-      binding.startButton.setOnClickListener {
-        onSelectStartPointClick()
-      }
-      binding.finishButton.setOnClickListener {
-        onSelectStartPointClick()
-      }
-      binding.orderButton.setOnClickListener {
-        onEvent("Пользователь нажал ЗАКАЗАТЬ") {
-          // todo:
-        }
-      }
-
-      doShowOrderDetails()
+    doAction(
+      desc = "Система закрывает экран",
+      events = listOf(
+        events.onBackPressed,
+      )
+    ) {
+      finish()
     }
   }
 
-  private fun doShowOrderDetails() = feature("Показать блок деталей заказа") {
-    val falseValues = listOf(
-      null,
-      "",
-      "    "
-    )
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    binding = ScreenMainBinding.inflate(layoutInflater)
+    setContentView(binding.root)
 
-    val hasPointsConditions = listOf(
-      Condition(
-        desc = "Выбрана точка старта",
-        falseValues = falseValues,
-        value = FastTaxiApp.orderFruit.startPoint?.getAddress(),
-        checkFunction = { !it.isNullOrBlank() }
-      ),
-      Condition(
-        desc = "Выбрана точка финиша",
-        falseValues = falseValues,
-        value = FastTaxiApp.orderFruit.finishPoint?.getAddress(),
-        checkFunction = { !it.isNullOrBlank() }
-      )
-    )
+    screenState = FastTaxiApp.getScreenState()
+      ?: MainScreenState()
+    FastTaxiApp.addScreenState(screenState)
 
-    doAction("Показываем пользователю точки старта/финиша (в деталях заказа)", FastTaxiApp.orderFruit) {
-      val hasNoAnyPoints = checkConditionsNot(hasPointsConditions, {}, {})
-      binding.defaultStartButton.isVisible = hasNoAnyPoints
-      binding.filledPointsContainer.isVisible = !hasNoAnyPoints
-
-      binding.startButton.text = FastTaxiApp.orderFruit.startPoint?.getAddress()
-      binding.finishButton.text = FastTaxiApp.orderFruit.finishPoint?.getAddress()
+    binding.defaultStartButton.setOnClickListener {
+      events.onSelectDefaultStartPointClick.call()
+    }
+    binding.startButton.setOnClickListener {
+      events.onSelectStartPointClick.call()
+    }
+    binding.finishButton.setOnClickListener {
+      events.onSelectFinishPointClick.call()
+    }
+    binding.orderButton.setOnClickListener {
+      events.onOrderClick.call()
     }
 
-    doAction("Показываем пользователю кнопку ЗАКАЗАТЬ (активную/неактивную)") {
-      val hasBothPoints = checkConditions(hasPointsConditions, {}, {})
-      binding.orderButton.isVisible = hasBothPoints
-    }
+    main()
+
+    events.onCreate.call()
   }
 
   override fun onResume() {
     super.onResume()
-    onEvent("Система сказала что экран стал активным (после перекрытия или на старте)") {
-      doShowOrderDetails()
-
-      doAction("Показать выбранные точки на карте") {
-        //TODO:
-      }
-    }
+    events.onResume.call()
   }
 
   override fun onStop() {
@@ -141,8 +141,43 @@ class MainActivity : AppCompatActivity() {
   }
 
   override fun onBackPressed() {
-    onEvent("Пользователь нажал/свайпнул НАЗАД") {
-      finish()
-    }
+    events.onBackPressed.call()
+  }
+
+  class Events {
+    val onCreate = Event("onCreate: ОС открыла главный экран")
+    val onResume = Event(
+      "onResume: Система сказала что экран стал активным (после перекрытия или на старте)"
+    )
+    val onBackPressed = Event("Чел нажал/свайпнул НАЗАД")
+
+    val onSelectDefaultStartPointClick = Event("Чел нажал ВЫБРАТЬ ТОЧКУ СТАРТА (default)")
+    val onSelectStartPointClick = Event("Чел нажал ВЫБРАТЬ ТОЧКУ СТАРТА")
+    val onSelectFinishPointClick = Event("Чел нажал ВЫБРАТЬ ТОЧКУ ФИНИША")
+    val onOrderClick = Event("Чел нажал ЗАКАЗАТЬ")
+  }
+
+  inner class Conditions {
+    private val falseValues = listOf(
+      null,
+      "",
+      "    "
+    )
+    private val hasPointsConditions = listOf(
+      Condition(
+        desc = "Выбрана точка старта",
+        falseValues = falseValues,
+        value = FastTaxiApp.orderFruit.startPoint?.getAddress(),
+        checkFunction = { !it.isNullOrBlank() }
+      ),
+      Condition(
+        desc = "Выбрана точка финиша",
+        falseValues = falseValues,
+        value = FastTaxiApp.orderFruit.finishPoint?.getAddress(),
+        checkFunction = { !it.isNullOrBlank() }
+      )
+    )
+    val hasNoAnyPoints = checkConditionsNot(hasPointsConditions, {}, {})
+    val hasBothPoints = checkConditions(hasPointsConditions, {}, {})
   }
 }

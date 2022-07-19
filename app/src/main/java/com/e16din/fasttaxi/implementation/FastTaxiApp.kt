@@ -46,13 +46,13 @@ class FastTaxiApp : Application(), App {
     fun addScreenState(screenState: ScreenState) {
       val key = screenState.javaClass.simpleName
       activeScreensStatesMap[key] = screenState
-      RedShadow.onEvent("addScreen: $key", null, FastTaxiApp::class.java)
+      RedShadow.onEvent("addScreen: $key", FastTaxiApp::class.java)
     }
 
     fun removeScreenState(cls: KClass<*>) {
       val key = cls.simpleName
       activeScreensStatesMap.remove(key)
-      RedShadow.onEvent("removeScreen: $key", null, FastTaxiApp::class.java)
+      RedShadow.onEvent("removeScreen: $key",  FastTaxiApp::class.java)
     }
 
     lateinit var profileFruit: ProfileFruit

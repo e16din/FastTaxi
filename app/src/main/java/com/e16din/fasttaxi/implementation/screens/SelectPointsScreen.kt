@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.Toast
 import androidx.core.widget.addTextChangedListener
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -26,184 +25,200 @@ import kotlinx.coroutines.withContext
 
 class SelectPointsFragment : BottomSheetDialogFragment() {
 
-  class SelectPointsScreenState(
+  data class SelectPointsScreenFruit(
     var selectionMode: SelectionMode = SelectionMode.Start,
+    var startPointQuery: String = "",
+    var finishPointQuery: String = "",
+    var addressesResult: FastTaxiServer.Result<List<AddressPointData>>? = null,
   ) : ScreenState {
+
+    fun getPoints(): List<AddressPointData> {
+      return addressesResult?.data ?: emptyList()
+    }
+
     enum class SelectionMode {
       Start,
       Finish
     }
   }
 
-  private var screenState = SelectPointsScreenState()
+  private var screenFruit = SelectPointsScreenFruit()
 
 
   private lateinit var binding: ScreenSelectAddressBinding
 
   private val scope = makeScope()
 
+  class Events {
+    val onCreate = Event("onCreate: Система создает экран выбора точек")
+
+    val onGetAddressesSuccess = Event("Сервер вернул запрошенные адреса")
+    val onGetAddressesFail = Event("Сервер вернул ошибку на запрос адресов")
+
+    val onStartPointQueryChanged = Event("Пользователь вводит точку старта")
+    val onStartPointSelected = Event("Пользователь выбирает точку (старта)")
+
+    val onFinishPointQueryChanged = Event("Пользователь вводит точку финиша")
+    val onFinishPointSelected = Event("Пользователь выбирает точку (финиша)")
+
+    val onStartPointModeSelected = Event("Чел активировал режим поиска точки старта")
+    val onFinishPointModeSelected = Event("Чел активировал режим поиска точки финиша")
+  }
+
+  private val events = Events()
+
   override fun onCreateView(
     inflater: LayoutInflater,
     container: ViewGroup?,
     savedInstanceState: Bundle?,
   ): View {
-    feature("При открытии экрана выбора адресов") {
-      dialog?.let {
-        val sheet = it as BottomSheetDialog
-        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
-      }
-
-      val screen = FastTaxiApp.getScreenState()
-        ?: SelectPointsScreenState()
-
-      FastTaxiApp.addScreenState(screen)
-      binding = ScreenSelectAddressBinding.inflate(layoutInflater)
-
-      onEvent("ОС создает экран выбора точек (старт/финиш)") {
-        doAction("Показать пользователю уже выбранные точки (старт/финиш)",
-          FastTaxiApp.orderFruit) {
-          doUpdateSelectedPoints()
-        }
-      }
+    dialog?.let {
+      val sheet = it as BottomSheetDialog
+      sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
     }
 
-    fun doGetAddresses(query: String) = feature("Запрос адресов и обработка ответа") {
-      scope.launch(Dispatchers.Main) {
-        val addressesResult = withContext(Dispatchers.IO) {
-          FastTaxiServer.getAddresses(query)
+    val screen = FastTaxiApp.getScreenState()
+      ?: SelectPointsScreenFruit()
+
+    FastTaxiApp.addScreenState(screen)
+    binding = ScreenSelectAddressBinding.inflate(layoutInflater)
+
+    binding.startPointField.addTextChangedListener { query ->
+      fieldsHandler.doLast {
+        screenFruit.startPointQuery = query.toString()
+        if (query.isNullOrEmpty()) {
+          FastTaxiApp.orderFruit.startPoint = null
         }
-        when (addressesResult.success) {
-          true -> {
-            onEvent("Сервер вернул запрошенные адреса") {
-              doAction("Показать список адресов по введенному тексту из поля финиша") {
-                (binding.addressesList.adapter as AddressPointsAdapter)
-                  .fill(addressesResult.data)
-              }
-            }
-          }
-          false -> {
-            onEvent("Сервер вернул ошибку на запрос адресов") {
-              val message = "Не удалось получить адреса"
-              doAction("Показать пользователю сообщение об ошибке загрузки данных", message) {
-                Toast.makeText(binding.root.context, message, Toast.LENGTH_SHORT)
-                  .show()
-              }
-            }
-          }
+        events.onStartPointQueryChanged.call()
+      }
+    }
+    binding.finishPointField.addTextChangedListener { query ->
+      fieldsHandler.doLast {
+        screenFruit.finishPointQuery = query.toString()
+        if (query.isNullOrEmpty()) {
+          FastTaxiApp.orderFruit.finishPoint = null
         }
+        events.onFinishPointQueryChanged.call()
       }
     }
 
-    fun initQueryChangedFeature(
-      field: EditText,
-      selectionMode: SelectPointsScreenState.SelectionMode,
-    ) = feature("Обработка ввода текста в поля поиска") {
-      field.addTextChangedListener { query ->
-        onEvent("Пользователь вводит точку старта") {
-          if (query.isNullOrBlank()) {
-            doAction("Обновить фрукт деталей заказа, точку старта/финиша", selectionMode) {
-              when (selectionMode) {
-                SelectPointsScreenState.SelectionMode.Start -> {
-                  FastTaxiApp.orderFruit.startPoint = null
-                }
-                SelectPointsScreenState.SelectionMode.Finish -> {
-                  FastTaxiApp.orderFruit.finishPoint = null
-                }
-              }
-              doAction("Сохранить выбранные адреса 1") {
-                LocalDataSource.saveLocalData(FastTaxiApp.orderFruit)
-              }
-            }
-          }
-          doAction("Запросить адреса с сервера 2", query) {
-            doGetAddresses(query.toString())
-          }
-        }
+    binding.startPointField.setOnFocusChangeListener { v, hasFocus ->
+      if (hasFocus) {
+        screenFruit.selectionMode = SelectPointsScreenFruit.SelectionMode.Start
+        events.onStartPointModeSelected.call()
       }
     }
-    initQueryChangedFeature(
-      field = binding.startPointField,
-      selectionMode = SelectPointsScreenState.SelectionMode.Start
-    )
-    initQueryChangedFeature(
-      field = binding.finishPointField,
-      selectionMode = SelectPointsScreenState.SelectionMode.Finish
-    )
-
-    fun initChangeFieldsFeature(
-      field: EditText,
-      selectionMode: SelectPointsScreenState.SelectionMode,
-    ) = feature("Переключение между полями Старт/Финиш") {
-      field.setOnFocusChangeListener { v, hasFocus ->
-        if (hasFocus) {
-          doAction("Обновить стейт, режим показа адресов", selectionMode) {
-            screenState.selectionMode = selectionMode
-          }
-
-          val query = field.text.toString()
-          doAction("Запросить адреса с сервера 1", query) {
-            doGetAddresses(query)
-          }
-        }
+    binding.finishPointField.setOnFocusChangeListener { v, hasFocus ->
+      if (hasFocus) {
+        screenFruit.selectionMode = SelectPointsScreenFruit.SelectionMode.Finish
+        events.onFinishPointModeSelected.call()
       }
     }
-    initChangeFieldsFeature(
-      field = binding.startPointField,
-      selectionMode = SelectPointsScreenState.SelectionMode.Start
-    )
-    initChangeFieldsFeature(
-      field = binding.finishPointField,
-      selectionMode = SelectPointsScreenState.SelectionMode.Finish
-    )
 
-    feature("Показ найденых адресов") {
-      binding.addressesList.layoutManager =
-        LinearLayoutManager(binding.root.context, LinearLayoutManager.VERTICAL, false)
-      binding.addressesList.adapter = AddressPointsAdapter(onPointSelected = { selectedPoint ->
-        feature("выбор адреса из списка") {
-          when (screenState.selectionMode) {
-            SelectPointsScreenState.SelectionMode.Start -> {
-              onEvent("Пользователь выбирает точку (старта)", selectedPoint) {
-                doAction("Обновить фрукт заказа (Start)", selectedPoint) {
-                  FastTaxiApp.orderFruit.startPoint = selectedPoint
-                }
-                doAction("Показать выбранный адрес в активном поле ввода", FastTaxiApp.orderFruit) {
-                  doUpdateSelectedPoints()
-                }
-              }
-            }
-            SelectPointsScreenState.SelectionMode.Finish -> {
-              onEvent("Пользователь выбирает точку (финиша)", selectedPoint) {
-                doAction("Обновить фрукт заказа (Finish)", selectedPoint) {
-                  FastTaxiApp.orderFruit.finishPoint = selectedPoint
-                }
-                doAction("Показать выбранный адрес в активном поле ввода", FastTaxiApp.orderFruit) {
-                  doUpdateSelectedPoints()
-                }
-              }
-            }
-          }
-          doAction("Сохранить выбранные адреса 2") {
-            LocalDataSource.saveLocalData(FastTaxiApp.orderFruit)
-          }
+    binding.addressesList.layoutManager =
+      LinearLayoutManager(binding.root.context, LinearLayoutManager.VERTICAL, false)
+    binding.addressesList.adapter = AddressPointsAdapter(onPointSelected = { selectedPoint ->
+      when (screenFruit.selectionMode) {
+        SelectPointsScreenFruit.SelectionMode.Start -> {
+          FastTaxiApp.orderFruit.startPoint = selectedPoint
+          events.onStartPointSelected.call()
         }
-      })
-    }
+        SelectPointsScreenFruit.SelectionMode.Finish -> {
+          FastTaxiApp.orderFruit.finishPoint = selectedPoint
+          events.onFinishPointSelected.call()
+        }
+      }
+    })
+
+    main()
+
+    events.onCreate.call()
 
     return binding.root
   }
 
-  override fun onDismiss(dialog: DialogInterface) {
-    FastTaxiApp.removeScreenState(SelectPointsScreenState::class)
-    super.onDismiss(dialog)
+  private fun main() {
+    doAction(
+      desc = "Показать пользователю уже выбранные точки (старт/финиш)",
+      events = listOf(
+        events.onCreate,
+        events.onStartPointSelected,
+        events.onFinishPointSelected
+      )
+    ) {
+      val startAddress = FastTaxiApp.orderFruit.startPoint?.getAddress() ?: ""
+      binding.startPointField.setText(startAddress)
+
+      val finishAddress = FastTaxiApp.orderFruit.finishPoint?.getAddress() ?: ""
+      binding.finishPointField.setText(finishAddress)
+    }
+
+    doAction(
+      desc = "Сохранить выбранные адреса 1",
+      events = listOf(events.onStartPointQueryChanged)
+    ) {
+      LocalDataSource.saveLocalData(data(FastTaxiApp.orderFruit))
+    }
+
+    doAction(
+      desc = "Показать список адресов по введенному тексту из поля финиша",
+      events = listOf(events.onGetAddressesSuccess)
+    ) {
+      (binding.addressesList.adapter as AddressPointsAdapter)
+        .fill(screenFruit.getPoints())
+    }
+
+    doAction(
+      desc = "Показать пользователю сообщение об ошибке загрузки данных",
+      events = listOf(events.onGetAddressesFail)
+    ) {
+      val message = "Не удалось получить адреса"
+      Toast.makeText(binding.root.context, data(message), Toast.LENGTH_SHORT)
+        .show()
+    }
+
+    doAction(
+      desc = "Запросить адреса с сервера",
+      events = listOf(
+        events.onStartPointQueryChanged,
+        events.onFinishPointQueryChanged
+      )
+    ) {
+      val query = when (screenFruit.selectionMode) {
+        SelectPointsScreenFruit.SelectionMode.Start -> screenFruit.startPointQuery
+        SelectPointsScreenFruit.SelectionMode.Finish -> screenFruit.finishPointQuery
+      }
+
+      scope.launch(Dispatchers.Main) {
+        val addressesResult = withContext(Dispatchers.IO) {
+          FastTaxiServer.getAddresses(data(query))
+        }
+        screenFruit.addressesResult = addressesResult
+        when (addressesResult.success) {
+          true -> {
+            events.onGetAddressesSuccess.call()
+          }
+          false -> {
+            events.onGetAddressesFail.call()
+          }
+        }
+      }
+    }
+
+    doAction(
+      desc = "Сохранить выбранные адреса",
+      events = listOf(
+        events.onStartPointSelected,
+        events.onFinishPointSelected
+      )
+    ) {
+      LocalDataSource.saveLocalData(FastTaxiApp.orderFruit)
+    }
   }
 
-  private fun doUpdateSelectedPoints() = feature("Показать выбранные адреса") {
-    val startAddress = FastTaxiApp.orderFruit.startPoint?.getAddress() ?: ""
-    binding.startPointField.setText(startAddress)
-
-    val finishAddress = FastTaxiApp.orderFruit.finishPoint?.getAddress() ?: ""
-    binding.finishPointField.setText(finishAddress)
+  override fun onDismiss(dialog: DialogInterface) {
+    FastTaxiApp.removeScreenState(SelectPointsScreenFruit::class)
+    super.onDismiss(dialog)
   }
 
   class AddressPointsAdapter(

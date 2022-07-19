@@ -11,29 +11,54 @@ import java.util.concurrent.atomic.AtomicInteger
 
 
 val stepsHistory = mutableListOf<Step>()
-inline fun Any.onEvent(
-  desc: String,
-  data: Any? = null,
-  crossinline onEvent: () -> Unit,
+
+class Event(
+  val desc: String,
 ) {
-  RedShadow.onEvent(desc, data, this.javaClass)
-  onEvent.invoke()
-  stepsHistory.add(Event(desc))
+  private val listeners = mutableListOf<() -> Unit>()
+
+  fun call() {
+    listeners.forEach {
+      RedShadow.onEvent(desc, Event::class.java)
+      stepsHistory.add(EventStep(desc))
+
+      it.invoke()
+    }
+  }
+
+  fun listen(onEvent: () -> Unit) {
+    listeners.add(onEvent)
+  }
 }
 
-fun Any.doAction(
-  desc: String,
-  data: Any? = null,
-  onAction: () -> Unit,
+inline fun Any.doAction(
+  desc: String? = null,
+  events: List<Event>,
+  crossinline onAction: () -> Unit,
 ) {
-  RedShadow.onActionStart(desc, data, this.javaClass)
-  onAction.invoke()
-  stepsHistory.add(Action(desc))
-  RedShadow.onActionEnd(desc, data, this.javaClass)
+
+  events.forEach { event ->
+    event.listen {
+      val name = desc ?: "doAction()"
+      RedShadow.onActionStart(name, this.javaClass)
+      onAction.invoke()
+      stepsHistory.add(ActionStep(name))
+      RedShadow.onActionEnd(desc, this.javaClass)
+    }
+  }
 }
 
 inline fun feature(desc: String, onEvent: () -> Unit) {
   onEvent.invoke()
+}
+
+inline fun <T> Any.data(value: T): T {
+  RedShadow.onEvent("data: $value", this.javaClass)
+  return value
+}
+
+inline fun Any.desc(text: String) {
+  RedShadow.onEvent("data: $text", this.javaClass)
 }
 
 fun Handler.doLast(delay: Long = 350L, call: () -> Unit) {
@@ -57,9 +82,6 @@ class Condition<T : Any?>(
   val checkFunction: (data: T) -> Boolean,
 )
 
-val checkOkActionName = "[Check] Ok"
-val checkNotOkActionName = "[Check] Not Ok"
-
 inline fun <T> Any.checkConditionsNot(
   conditions: List<Condition<T>>,
   crossinline onOk: () -> Unit,
@@ -72,7 +94,7 @@ inline fun <T> Any.checkConditions(
   conditions: List<Condition<T>>,
   crossinline onOk: () -> Unit,
   crossinline onNotOk: (falseConditions: List<Condition<T>>) -> Unit,
-  invert: Boolean = false,
+  invert: Boolean = false, // NOTE: Нужен чтобы перевернуть все объекты Condition
 ): Boolean {
   if (BuildConfig.DEBUG) {
     // Тестировать falseValues и trueValues,
@@ -108,13 +130,13 @@ inline fun <T> Any.checkConditions(
   val failConditions = conditions - successConditions.toSet()
 
   if (failConditions.isEmpty()) {
-    RedShadow.onEvent(checkOkActionName, null, this.javaClass)
+    RedShadow.onEvent("[Check] Ok", this.javaClass)
     onOk.invoke()
     return true
 
   } else {
     failConditions.forEach {
-      RedShadow.onEvent(checkNotOkActionName, it.desc, this.javaClass)
+      RedShadow.onEvent("[Check] Not Ok | ${it.desc}", this.javaClass)
     }
     onNotOk.invoke(failConditions)
     return false
@@ -124,8 +146,8 @@ inline fun <T> Any.checkConditions(
 private val uniqueStepsCount = AtomicInteger()
 fun generateStepId() = uniqueStepsCount.incrementAndGet()
 
-class Action(desc: String, id: Int = generateStepId()) : Step(id, desc, Type.Action)
-class Event(desc: String, id: Int = generateStepId()) : Step(id, desc, Type.Event)
+class ActionStep(desc: String, id: Int = generateStepId()) : Step(id, desc, Type.Action)
+class EventStep(desc: String, id: Int = generateStepId()) : Step(id, desc, Type.Event)
 abstract class Step(
   var id: Int,
   var desc: String,
