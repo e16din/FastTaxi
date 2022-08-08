@@ -1,4 +1,4 @@
-package com.e16din.fasttaxi.implementation.utils.redshadow
+package com.e16din.fasttaxi.implementation.utils
 
 import java.nio.charset.Charset
 

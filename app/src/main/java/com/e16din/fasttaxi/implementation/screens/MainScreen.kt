@@ -45,7 +45,11 @@ class MainActivity : AppCompatActivity() {
       val alreadyStarted =
         FastTaxiApp.getScreenState<SelectPointsFragment.SelectPointsScreenFruit>() != null
       if (!alreadyStarted) {
-        SelectPointsFragment().show(
+        val selectPointsFragment = SelectPointsFragment()
+        selectPointsFragment.callbacks.onExit.listen {
+          events.onSelectPointsScreenExit.call()
+        }
+        selectPointsFragment.show(
           supportFragmentManager,
           SelectPointsFragment::class.java.simpleName
         )
@@ -57,15 +61,17 @@ class MainActivity : AppCompatActivity() {
       doAction(
         desc = "Показываем пользователю точки старта/финиша (в деталях заказа)",
         events = listOf(
-          events.onResume
+          events.onCreate,
+          events.onSelectPointsScreenExit
         )
       ) {
-        binding.defaultStartButton.isVisible = conditions.hasNoAnyPoints
-        binding.filledPointsContainer.isVisible = !conditions.hasNoAnyPoints
+        binding.defaultStartButton.isVisible = conditions.hasNoAnyPoints()
+        binding.filledPointsContainer.isVisible = !conditions.hasNoAnyPoints()
 
         with(FastTaxiApp.orderFruit) {
-          binding.startButton.text = "Старт: " + (startPoint?.getAddress() // todo: сделать иконки старта/финиша, удалить текст
-            ?: getString(R.string.where_to_go))
+          binding.startButton.text =
+            "Старт: " + (startPoint?.getAddress() // todo: сделать иконки старта/финиша, удалить текст
+              ?: getString(R.string.where_to_go))
           binding.finishButton.text = "Финиш: " + (finishPoint?.getAddress()
             ?: getString(R.string.where_to_go))
         }
@@ -73,9 +79,12 @@ class MainActivity : AppCompatActivity() {
 
       doAction(
         desc = "Показываем пользователю кнопку ЗАКАЗАТЬ (активную/неактивную)",
-        events = listOf(events.onResume, )
+        events = listOf(
+          events.onCreate,
+          events.onSelectPointsScreenExit
+        )
       ) {
-        binding.orderButton.isVisible = conditions.hasBothPoints
+        binding.orderButton.isVisible = conditions.hasBothPoints()
       }
 
       doAction(
@@ -123,11 +132,6 @@ class MainActivity : AppCompatActivity() {
     events.onCreate.call()
   }
 
-  override fun onResume() {
-    super.onResume()
-    events.onResume.call()
-  }
-
   override fun onStop() {
     binding.mapView.onStop()
     MapKitFactory.getInstance().onStop()
@@ -146,9 +150,7 @@ class MainActivity : AppCompatActivity() {
 
   class Events {
     val onCreate = Event("onCreate: ОС открыла главный экран")
-    val onResume = Event(
-      "onResume: Система сказала что экран стал активным (после перекрытия или на старте)"
-    )
+    var onSelectPointsScreenExit = Event("Скрыто окно выбора точек адресов")
     val onBackPressed = Event("Чел нажал/свайпнул НАЗАД")
 
     val onSelectDefaultStartPointClick = Event("Чел нажал ВЫБРАТЬ ТОЧКУ СТАРТА (default)")
@@ -177,7 +179,8 @@ class MainActivity : AppCompatActivity() {
         checkFunction = { !it.isNullOrBlank() }
       )
     )
-    val hasNoAnyPoints = checkConditionsNot(hasPointsConditions, {}, {})
-    val hasBothPoints = checkConditions(hasPointsConditions, {}, {})
+
+    fun hasNoAnyPoints() = checkConditionsNot(hasPointsConditions, {}, {})
+    fun hasBothPoints() = checkConditions(hasPointsConditions, {}, {})
   }
 }

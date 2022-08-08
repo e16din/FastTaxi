@@ -17,8 +17,9 @@ class Event(
 ) {
   private val listeners = mutableListOf<() -> Unit>()
 
-  fun call() {
+  fun call(data: Any? = null) {
     listeners.forEach {
+      data(data)
       RedShadow.onEvent(desc, Event::class.java)
       stepsHistory.add(EventStep(desc))
 
@@ -32,7 +33,7 @@ class Event(
 }
 
 inline fun Any.doAction(
-  desc: String? = null,
+  desc: String? = null, // todo: сделать ссылками как в стектрейсе
   events: List<Event>,
   crossinline onAction: () -> Unit,
 ) {

@@ -16,6 +16,7 @@ import com.e16din.fasttaxi.databinding.ItemAddressPointBinding
 import com.e16din.fasttaxi.databinding.ScreenSelectAddressBinding
 import com.e16din.fasttaxi.implementation.*
 import com.e16din.fasttaxi.implementation.data.AddressPointData
+import com.e16din.fasttaxi.implementation.utils.ScreenCallbacks
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -57,15 +58,20 @@ class SelectPointsFragment : BottomSheetDialogFragment() {
 
     val onStartPointQueryChanged = Event("Пользователь вводит точку старта")
     val onStartPointSelected = Event("Пользователь выбирает точку (старта)")
+    val onStartPointModeSelected = Event("Чел активировал режим поиска точки старта")
 
     val onFinishPointQueryChanged = Event("Пользователь вводит точку финиша")
     val onFinishPointSelected = Event("Пользователь выбирает точку (финиша)")
-
-    val onStartPointModeSelected = Event("Чел активировал режим поиска точки старта")
     val onFinishPointModeSelected = Event("Чел активировал режим поиска точки финиша")
   }
 
   private val events = Events()
+  val callbacks = ScreenCallbacks()
+
+  override fun onCancel(dialog: DialogInterface) {
+    callbacks.onExit.call()
+    super.onCancel(dialog)
+  }
 
   override fun onCreateView(
     inflater: LayoutInflater,
@@ -89,7 +95,7 @@ class SelectPointsFragment : BottomSheetDialogFragment() {
         if (query.isNullOrEmpty()) {
           FastTaxiApp.orderFruit.startPoint = null
         }
-        events.onStartPointQueryChanged.call()
+        events.onStartPointQueryChanged.call(query)
       }
     }
     binding.finishPointField.addTextChangedListener { query ->
@@ -98,20 +104,20 @@ class SelectPointsFragment : BottomSheetDialogFragment() {
         if (query.isNullOrEmpty()) {
           FastTaxiApp.orderFruit.finishPoint = null
         }
-        events.onFinishPointQueryChanged.call()
+        events.onFinishPointQueryChanged.call(query)
       }
     }
 
     binding.startPointField.setOnFocusChangeListener { v, hasFocus ->
       if (hasFocus) {
         screenFruit.selectionMode = SelectPointsScreenFruit.SelectionMode.Start
-        events.onStartPointModeSelected.call()
+        events.onStartPointModeSelected.call(hasFocus)
       }
     }
     binding.finishPointField.setOnFocusChangeListener { v, hasFocus ->
       if (hasFocus) {
         screenFruit.selectionMode = SelectPointsScreenFruit.SelectionMode.Finish
-        events.onFinishPointModeSelected.call()
+        events.onFinishPointModeSelected.call(hasFocus)
       }
     }
 
@@ -121,11 +127,11 @@ class SelectPointsFragment : BottomSheetDialogFragment() {
       when (screenFruit.selectionMode) {
         SelectPointsScreenFruit.SelectionMode.Start -> {
           FastTaxiApp.orderFruit.startPoint = selectedPoint
-          events.onStartPointSelected.call()
+          events.onStartPointSelected.call(selectedPoint)
         }
         SelectPointsScreenFruit.SelectionMode.Finish -> {
           FastTaxiApp.orderFruit.finishPoint = selectedPoint
-          events.onFinishPointSelected.call()
+          events.onFinishPointSelected.call(selectedPoint)
         }
       }
     })
@@ -161,7 +167,7 @@ class SelectPointsFragment : BottomSheetDialogFragment() {
     }
 
     doAction(
-      desc = "Показать список адресов по введенному тексту из поля финиша",
+      desc = "Показать список адресов",
       events = listOf(events.onGetAddressesSuccess)
     ) {
       (binding.addressesList.adapter as AddressPointsAdapter)
@@ -181,7 +187,9 @@ class SelectPointsFragment : BottomSheetDialogFragment() {
       desc = "Запросить адреса с сервера",
       events = listOf(
         events.onStartPointQueryChanged,
-        events.onFinishPointQueryChanged
+        events.onFinishPointQueryChanged,
+        events.onStartPointModeSelected,
+        events.onFinishPointModeSelected
       )
     ) {
       val query = when (screenFruit.selectionMode) {
@@ -194,12 +202,12 @@ class SelectPointsFragment : BottomSheetDialogFragment() {
           FastTaxiServer.getAddresses(data(query))
         }
         screenFruit.addressesResult = addressesResult
-        when (addressesResult.success) {
+        when (val hasAddressesResult = addressesResult.success) {
           true -> {
-            events.onGetAddressesSuccess.call()
+            events.onGetAddressesSuccess.call(hasAddressesResult)
           }
           false -> {
-            events.onGetAddressesFail.call()
+            events.onGetAddressesFail.call(hasAddressesResult)
           }
         }
       }

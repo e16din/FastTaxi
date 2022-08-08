@@ -49,7 +49,7 @@ class AuthActivity : AppCompatActivity() {
         events.onPasswordChanged
       )
     ) {
-      binding.signInButton.isEnabled = data(conditions.isEnterButtonEnabled)
+      binding.signInButton.isEnabled = data(conditions.isEnterButtonEnabled())
     }
 
     doAction(
@@ -69,12 +69,12 @@ class AuthActivity : AppCompatActivity() {
         }
 
         screenFruit.authResult = result
-        when (result.success) {
+        when (val isAuthSuccess = result.success) {
           true -> {
-            events.onAuthSuccess.call()
+            events.onAuthSuccess.call(isAuthSuccess)
           }
           false -> {
-            events.onAuthFail.call()
+            events.onAuthFail.call(isAuthSuccess)
           }
         }
       }
@@ -117,13 +117,13 @@ class AuthActivity : AppCompatActivity() {
     binding.loginField.addTextChangedListener { login ->
       fieldsHandler.doLast {
         screenFruit.login = login.toString()
-        events.onLoginChanged.call()
+        events.onLoginChanged.call(login)
       }
     }
     binding.passwordField.addTextChangedListener { password ->
       fieldsHandler.doLast {
         screenFruit.password = password.toString()
-        events.onPasswordChanged.call()
+        events.onPasswordChanged.call(password)
       }
     }
     binding.signInButton.setOnClickListener {
@@ -147,7 +147,7 @@ class AuthActivity : AppCompatActivity() {
   }
 
   inner class Conditions {
-    val isEnterButtonEnabled = checkConditions(
+    fun isEnterButtonEnabled() = checkConditions(
       conditions = listOf(
         Condition(
           desc = "Логин от 4-х до 15-ти сиволов",
